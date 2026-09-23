@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 839d992e3348a314a8926130295b8444, type: 3}
+  m_Name: chiffres
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningCategory
+  _categoryId: chiffres
+  _title: Chiffres
+  _subtitle: "De z\xE9ro \xE0 neuf"
+  _countLabel: chiffres
+  _accent: {r: 0.76862746, g: 0.57254905, b: 0.36078432, a: 1}
+  _puzzleGroupSize: 5
+  _items:
+  - {fileID: 11400000, guid: ac77358095d8e6b469e1e09e39b618b1, type: 2}
+  - {fileID: 11400000, guid: aa148fc81d6f11d4dabd060423701b06, type: 2}
+  - {fileID: 11400000, guid: 242c27e71c98b224497043643bd73dbd, type: 2}
+  - {fileID: 11400000, guid: 04ef19d5cc768bc4ca5eb6835ec66239, type: 2}
+  - {fileID: 11400000, guid: 93d85c86b9d66bd4aa3a2c7028fd6d39, type: 2}
+  - {fileID: 11400000, guid: 5977ca15328db4b41ab772eedb88fe69, type: 2}
+  - {fileID: 11400000, guid: d466b688b13a8a94b8ada136a9b61cc9, type: 2}
+  - {fileID: 11400000, guid: af772d71d9cd2094aa1fd40bf7759454, type: 2}
+  - {fileID: 11400000, guid: f6c3d051b0b0b92468d9e577092d5d7c, type: 2}
+  - {fileID: 11400000, guid: 984ade5f77c2e6f47be98478b18dbfc9, type: 2}
+  _games:
+  - {fileID: 11400000, guid: 6d7dd79b70dd0884ca056fd4c7d2908f, type: 2}
+  - {fileID: 11400000, guid: 95f0ea874c93c8941bfa7c7eb93f5166, type: 2}
+  - {fileID: 11400000, guid: f51ea07775e6c2747a1c50d1c79a8d0d, type: 2}

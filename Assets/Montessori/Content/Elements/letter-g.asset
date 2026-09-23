@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: letter-g
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: letter-g
+  _symbol: G
+  _displayName: G
+  _associatedWord: "G\xE2teau"
+  _kind: 0
+  _role: 2
+  _visual: 0
+  _accent: {r: 0.8862745, g: 0.29411766, b: 0.41568628, a: 1}
+  _pictogramId: letter-g
+  _strokes:
+  - Points:
+    - {x: 0.6985478, y: 0.80641776}
+    - {x: 0.64569956, y: 0.84928226}
+    - {x: 0.58694524, y: 0.879697}
+    - {x: 0.5243789, y: 0.89657795}
+    - {x: 0.46023074, y: 0.8993233}
+    - {x: 0.3967873, y: 0.88783514}
+    - {x: 0.33630976, y: 0.8625231}
+    - {x: 0.28095403, y: 0.8242894}
+    - {x: 0.2326929, y: 0.7744966}
+    - {x: 0.1932469, y: 0.71491987}
+    - {x: 0.16402183, y: 0.6476824}
+    - {x: 0.14605944, y: 0.57518107}
+    - {x: 0.13999999, y: 0.49999997}
+    - {x: 0.14605945, y: 0.42481884}
+    - {x: 0.16402179, y: 0.35231766}
+    - {x: 0.19324689, y: 0.28508016}
+    - {x: 0.232693, y: 0.22550328}
+    - {x: 0.28095385, y: 0.17571074}
+    - {x: 0.33630982, y: 0.13747686}
+    - {x: 0.3967873, y: 0.112164825}
+    - {x: 0.46023065, y: 0.100676745}
+    - {x: 0.52437884, y: 0.10342204}
+    - {x: 0.5869453, y: 0.12030298}
+    - {x: 0.64569956, y: 0.15071766}
+    - {x: 0.6985477, y: 0.19358219}
+  - Points:
+    - {x: 0.7, y: 0.5}
+    - {x: 0.48, y: 0.5}

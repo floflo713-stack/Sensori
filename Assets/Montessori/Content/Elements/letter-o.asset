@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: letter-o
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: letter-o
+  _symbol: O
+  _displayName: O
+  _associatedWord: Oiseau
+  _kind: 0
+  _role: 1
+  _visual: 0
+  _accent: {r: 0.12156863, g: 0.43529412, b: 0.7490196, a: 1}
+  _pictogramId: letter-o
+  _strokes:
+  - Points:
+    - {x: 0.5, y: 0.9}
+    - {x: 0.4287933, y: 0.88997114}
+    - {x: 0.36115718, y: 0.86038756}
+    - {x: 0.30048326, y: 0.8127326}
+    - {x: 0.24981393, y: 0.7493959}
+    - {x: 0.21168995, y: 0.67355347}
+    - {x: 0.18802308, y: 0.5890084}
+    - {x: 0.18, y: 0.49999997}
+    - {x: 0.18802309, y: 0.41099155}
+    - {x: 0.21168998, y: 0.3264465}
+    - {x: 0.24981396, y: 0.25060403}
+    - {x: 0.30048332, y: 0.18726735}
+    - {x: 0.3611573, y: 0.13961238}
+    - {x: 0.42879328, y: 0.11002883}
+    - {x: 0.5, y: 0.099999994}
+    - {x: 0.57120675, y: 0.11002883}
+    - {x: 0.6388428, y: 0.13961248}
+    - {x: 0.69951683, y: 0.18726747}
+    - {x: 0.75018615, y: 0.25060418}
+    - {x: 0.78831005, y: 0.3264465}
+    - {x: 0.8119769, y: 0.41099167}
+    - {x: 0.82, y: 0.50000006}
+    - {x: 0.8119769, y: 0.5890085}
+    - {x: 0.78831, y: 0.67355365}
+    - {x: 0.7501861, y: 0.7493959}
+    - {x: 0.6995167, y: 0.8127326}
+    - {x: 0.63884276, y: 0.86038756}
+    - {x: 0.5712066, y: 0.8899712}
+    - {x: 0.49999988, y: 0.9}

@@ -1,0 +1,51 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 839d992e3348a314a8926130295b8444, type: 3}
+  m_Name: alphabet
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningCategory
+  _categoryId: alphabet
+  _title: Alphabet
+  _subtitle: Voyelles et consonnes
+  _countLabel: lettres
+  _accent: {r: 0.8862745, g: 0.29411766, b: 0.41568628, a: 1}
+  _puzzleGroupSize: 4
+  _items:
+  - {fileID: 11400000, guid: 673e42c735097094c9a91925849c8409, type: 2}
+  - {fileID: 11400000, guid: 4792a4b5b667bbf41ad3c6e479e3dca6, type: 2}
+  - {fileID: 11400000, guid: 70a656b75ed64ef408c860ce1cdc4b5a, type: 2}
+  - {fileID: 11400000, guid: 80b3adaf2202bb34d8b75f5fb1f076a8, type: 2}
+  - {fileID: 11400000, guid: 5183039aacd30554db1ad03a32b83825, type: 2}
+  - {fileID: 11400000, guid: 1ce7f5b20fe5b95459c98ae87c13f3e5, type: 2}
+  - {fileID: 11400000, guid: ad33067f8ae71344f80fc74c46951b28, type: 2}
+  - {fileID: 11400000, guid: d8c235fd44d651c4297815ff1fb0683d, type: 2}
+  - {fileID: 11400000, guid: ae811c602b2505d49b1a60bc70ec9978, type: 2}
+  - {fileID: 11400000, guid: ffa3160600fc73b468719ded80a6fcf9, type: 2}
+  - {fileID: 11400000, guid: 23b0ae7d8e0d5654fb89cadc2bf2f3fa, type: 2}
+  - {fileID: 11400000, guid: 28315ea5f1b568341bddb7db591c31fd, type: 2}
+  - {fileID: 11400000, guid: 029d95524d3cac54aba75312b6be8703, type: 2}
+  - {fileID: 11400000, guid: 997ff06e393b9324ab6c6a244b2dfd9b, type: 2}
+  - {fileID: 11400000, guid: eab59e5ce9ee2bb4d871b24c902d8315, type: 2}
+  - {fileID: 11400000, guid: e503b016e654c9d48a4cd7250a8f5dd1, type: 2}
+  - {fileID: 11400000, guid: 6bf26a0d2d36ff04abcf6d2de531bda6, type: 2}
+  - {fileID: 11400000, guid: 33f62830eeb474b478d80eb6e6940c19, type: 2}
+  - {fileID: 11400000, guid: 79b15272cf3a6b5489b444479faa254f, type: 2}
+  - {fileID: 11400000, guid: 022bca724c7e8dd41ba688a07c5f07e1, type: 2}
+  - {fileID: 11400000, guid: 362e18680cf1a394292608112718ad5d, type: 2}
+  - {fileID: 11400000, guid: 2706e0fa2629c824dad7872c5144a6b7, type: 2}
+  - {fileID: 11400000, guid: fbf61eda7e4ea084eaae7ba388c6f4b0, type: 2}
+  - {fileID: 11400000, guid: c730e400f0e5bf94daa58c4b4b52d26b, type: 2}
+  - {fileID: 11400000, guid: bda037817cee7bb4a99233af8693488d, type: 2}
+  - {fileID: 11400000, guid: ec5ebc76ac9469d4ca13b7d5487b7a2b, type: 2}
+  _games:
+  - {fileID: 11400000, guid: 6d7dd79b70dd0884ca056fd4c7d2908f, type: 2}
+  - {fileID: 11400000, guid: 95f0ea874c93c8941bfa7c7eb93f5166, type: 2}
+  - {fileID: 11400000, guid: f51ea07775e6c2747a1c50d1c79a8d0d, type: 2}

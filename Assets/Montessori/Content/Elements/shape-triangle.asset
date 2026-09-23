@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: shape-triangle
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: shape-triangle
+  _symbol: Triangle
+  _displayName: Triangle
+  _associatedWord: Montagne
+  _kind: 2
+  _role: 0
+  _visual: 1
+  _accent: {r: 0.43137255, g: 0.6039216, b: 0.44705883, a: 1}
+  _pictogramId: shape-triangle
+  _strokes:
+  - Points:
+    - {x: 0.5, y: 0.88}
+    - {x: 0.88, y: 0.16}
+    - {x: 0.12, y: 0.16}
+    - {x: 0.5, y: 0.88}

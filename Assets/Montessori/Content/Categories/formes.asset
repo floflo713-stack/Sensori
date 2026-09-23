@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 839d992e3348a314a8926130295b8444, type: 3}
+  m_Name: formes
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningCategory
+  _categoryId: formes
+  _title: Formes
+  _subtitle: "Ronds, carr\xE9s et amis"
+  _countLabel: formes
+  _accent: {r: 0.43137255, g: 0.6039216, b: 0.44705883, a: 1}
+  _puzzleGroupSize: 4
+  _items:
+  - {fileID: 11400000, guid: 54fad7bac0bec26489beff7865fa7afc, type: 2}
+  - {fileID: 11400000, guid: 18aa3e517a94ec64eacbf97e3ed80137, type: 2}
+  - {fileID: 11400000, guid: ce63cc9522a1d624492461a46d4857d3, type: 2}
+  - {fileID: 11400000, guid: a81c74454f8811342b346d885370e878, type: 2}
+  - {fileID: 11400000, guid: e19901952379e1749bce6ba9bf028793, type: 2}
+  - {fileID: 11400000, guid: 362a3a51af4301e4ca6fa66db3a93d02, type: 2}
+  - {fileID: 11400000, guid: 6f1602b074bd9ec489d1bbc483624869, type: 2}
+  - {fileID: 11400000, guid: cc1ffc0c841b7ff45b1314e41318472b, type: 2}
+  _games:
+  - {fileID: 11400000, guid: 6d7dd79b70dd0884ca056fd4c7d2908f, type: 2}
+  - {fileID: 11400000, guid: 95f0ea874c93c8941bfa7c7eb93f5166, type: 2}
+  - {fileID: 11400000, guid: f51ea07775e6c2747a1c50d1c79a8d0d, type: 2}

@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 839d992e3348a314a8926130295b8444, type: 3}
+  m_Name: couleurs
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningCategory
+  _categoryId: couleurs
+  _title: Couleurs
+  _subtitle: Les tablettes de couleur
+  _countLabel: couleurs
+  _accent: {r: 0.41568628, g: 0.56078434, b: 0.7490196, a: 1}
+  _puzzleGroupSize: 4
+  _items:
+  - {fileID: 11400000, guid: 693d9e6a4b7ec844ab6c7c5bab98d5d5, type: 2}
+  - {fileID: 11400000, guid: f82d94cbf10b1c1478bfcb141fd921a6, type: 2}
+  - {fileID: 11400000, guid: 08179ef3694c8c74ca934441e012d415, type: 2}
+  - {fileID: 11400000, guid: fa56b8f83184abc46a69fa20fd1ebac0, type: 2}
+  - {fileID: 11400000, guid: 811d44eb375bf1b45bf6b3b06f3812b7, type: 2}
+  - {fileID: 11400000, guid: 10cfdeaaa2d2aa44ea449c097e163e28, type: 2}
+  - {fileID: 11400000, guid: 0f1057d97e066b9419859f487be7e730, type: 2}
+  - {fileID: 11400000, guid: fad27aa664876424fb49bd841aea0501, type: 2}
+  - {fileID: 11400000, guid: a686227715d240b45afe926e09670da6, type: 2}
+  - {fileID: 11400000, guid: ad9cc8db9e5a455418dbcf3e8c67c111, type: 2}
+  _games:
+  - {fileID: 11400000, guid: 6d7dd79b70dd0884ca056fd4c7d2908f, type: 2}
+  - {fileID: 11400000, guid: 95f0ea874c93c8941bfa7c7eb93f5166, type: 2}
+  - {fileID: 11400000, guid: f51ea07775e6c2747a1c50d1c79a8d0d, type: 2}

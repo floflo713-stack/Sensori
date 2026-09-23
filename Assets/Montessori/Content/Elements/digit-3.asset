@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: digit-3
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: digit-3
+  _symbol: 3
+  _displayName: Trois
+  _associatedWord: Fleurs
+  _kind: 1
+  _role: 0
+  _visual: 0
+  _accent: {r: 0.76862746, g: 0.57254905, b: 0.36078432, a: 1}
+  _pictogramId: digit-3
+  _strokes:
+  - Points:
+    - {x: 0.26, y: 0.78}
+    - {x: 0.4, y: 0.9}
+    - {x: 0.64, y: 0.9}
+    - {x: 0.78, y: 0.76}
+    - {x: 0.72, y: 0.6}
+    - {x: 0.52, y: 0.5}
+  - Points:
+    - {x: 0.52, y: 0.5}
+    - {x: 0.74, y: 0.4}
+    - {x: 0.78, y: 0.24}
+    - {x: 0.62, y: 0.1}
+    - {x: 0.36, y: 0.1}
+    - {x: 0.22, y: 0.24}

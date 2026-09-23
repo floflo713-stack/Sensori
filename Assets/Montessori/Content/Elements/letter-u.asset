@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: letter-u
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: letter-u
+  _symbol: U
+  _displayName: U
+  _associatedWord: Uniforme
+  _kind: 0
+  _role: 1
+  _visual: 0
+  _accent: {r: 0.12156863, g: 0.43529412, b: 0.7490196, a: 1}
+  _pictogramId: letter-u
+  _strokes:
+  - Points:
+    - {x: 0.22, y: 0.9}
+    - {x: 0.22, y: 0.36}
+    - {x: 0.34, y: 0.12}
+    - {x: 0.66, y: 0.12}
+    - {x: 0.78, y: 0.36}
+    - {x: 0.78, y: 0.9}

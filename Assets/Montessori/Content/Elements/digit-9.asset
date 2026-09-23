@@ -1,0 +1,49 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 810445f8472601f4a9d62f20fcf26bb6, type: 3}
+  m_Name: digit-9
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.LearningItem
+  _itemId: digit-9
+  _symbol: 9
+  _displayName: Neuf
+  _associatedWord: Bouquet
+  _kind: 1
+  _role: 0
+  _visual: 0
+  _accent: {r: 0.76862746, g: 0.57254905, b: 0.36078432, a: 1}
+  _pictogramId: digit-9
+  _strokes:
+  - Points:
+    - {x: 0.48, y: 0.86}
+    - {x: 0.39791512, y: 0.84793854}
+    - {x: 0.32573095, y: 0.81320894}
+    - {x: 0.2721539, y: 0.76000005}
+    - {x: 0.24364613, y: 0.6947296}
+    - {x: 0.24364614, y: 0.62527037}
+    - {x: 0.27215394, y: 0.56}
+    - {x: 0.32573098, y: 0.5067911}
+    - {x: 0.39791518, y: 0.47206149}
+    - {x: 0.48, y: 0.46000004}
+    - {x: 0.5620848, y: 0.4720615}
+    - {x: 0.63426906, y: 0.5067912}
+    - {x: 0.6878461, y: 0.56000006}
+    - {x: 0.71635383, y: 0.6252704}
+    - {x: 0.71635383, y: 0.6947297}
+    - {x: 0.68784606, y: 0.76000005}
+    - {x: 0.634269, y: 0.81320894}
+    - {x: 0.56208473, y: 0.8479386}
+    - {x: 0.4799999, y: 0.86}
+  - Points:
+    - {x: 0.7, y: 0.66}
+    - {x: 0.68, y: 0.28}
+    - {x: 0.5, y: 0.1}
+    - {x: 0.3, y: 0.16}
