@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.UI;
@@ -79,6 +81,7 @@ namespace Sensori.Montessori.Editor
 
                 var root = new GameObject("Sensori");
                 MontessoriUiBuilder.Build(root, catalog, theme, games);
+                WireSensoriButton(root);
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene, ScenePath);
                 PromoteScene(ScenePath);
@@ -116,6 +119,26 @@ namespace Sensori.Montessori.Editor
             for (int i = 0; i < categories.Length; i++)
                 LearningProgress.ResetCategory(categories[i]);
             EditorUtility.DisplayDialog("Sensori", "La progression de l'atelier a été remise à zéro.", "OK");
+        }
+
+        static void WireSensoriButton(GameObject root)
+        {
+            var app = root.GetComponent<MontessoriApp>();
+            var home = root.GetComponentInChildren<HomePresenter>(true);
+            var button = home != null ? home.EnsureButton() : null;
+            if (app == null || button == null)
+            {
+                Debug.LogError("[Montessori] Impossible de câbler le bouton Sensori.");
+                return;
+            }
+
+            var image = button.GetComponent<Image>();
+            if (image != null)
+                image.raycastTarget = true;
+            button.onClick.AddListener(app.OnSensoriClicked);
+            if (!MontessoriApp.HasPersistent(button, nameof(MontessoriApp.OnSensoriClicked)))
+                UnityEventTools.AddPersistentListener(button.onClick, app.OnSensoriClicked);
+            app.PrepareCanvas();
         }
 
         static ThemeAssets CreateTheme()

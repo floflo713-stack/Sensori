@@ -247,8 +247,6 @@ namespace Sensori.Montessori
                 return;
             }
 #endif
-            if (button.onClick.GetPersistentEventCount() > 0)
-                return;
             button.onClick.RemoveListener(action);
             button.onClick.AddListener(action);
         }

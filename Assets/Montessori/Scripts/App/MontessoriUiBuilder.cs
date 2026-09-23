@@ -47,7 +47,7 @@ namespace Sensori.Montessori
             UiFactory.Stretch(categoryObject.GetComponent<RectTransform>(), 0f, 0f, 0f, 0f);
             var category = categoryObject.AddComponent<CategoryPresenter>();
             UiFactory.AddGroup(categoryObject);
-            category.Construct(theme, games);
+            category.Construct(theme, catalog, games);
 
             var gameRoot = UiFactory.Rect("Jeux", safe).gameObject;
             UiFactory.Stretch(gameRoot.GetComponent<RectTransform>(), 0f, 0f, 0f, 0f);
