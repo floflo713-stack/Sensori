@@ -903,6 +903,8 @@ namespace Sensori.Montessori
             if (_instruction != null)
                 _instruction.text = "Magnifique";
             WoodenAudio.PlaySuccess();
+            FrenchVoice.SayItem(item);
+            Motion.Delayed(0.85f, () => FrenchVoice.SayWord(item));
             if (MontessoriApp.Instance != null && _board != null)
                 MontessoriApp.Instance.Sparkle(_board.position, ink);
             Motion.PunchScale(_board, 0.035f, 0.35f);

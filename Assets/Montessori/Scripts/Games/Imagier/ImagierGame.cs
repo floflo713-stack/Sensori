@@ -346,6 +346,8 @@ namespace Sensori.Montessori
             PaintBack(item);
             _showingBack = false;
             ApplySide();
+            if (Application.isPlaying)
+                FrenchVoice.SayItem(item);
             if (!animate || _card == null || !Application.isPlaying)
                 return;
             _card.localScale = Vector3.one * 0.94f;
@@ -572,6 +574,7 @@ namespace Sensori.Montessori
                 UiFactory.AnchorCenter(_backHint.rectTransform, new Vector2(0f, -292f), new Vector2(460f, 40f));
             }
             WoodenAudio.PlayTap();
+            FrenchVoice.Say(word);
         }
 
         void ClosePortrait()
@@ -739,6 +742,8 @@ namespace Sensori.Montessori
             LearningProgress.Mark(category.CategoryId, GameId, item.ItemId);
             if (!known && MontessoriApp.Instance != null && _card != null)
                 MontessoriApp.Instance.Sparkle(_card.position, item.SymbolColor);
+            if (item.Kind != ItemKind.Letter && !string.IsNullOrEmpty(item.AssociatedWord))
+                FrenchVoice.Say(item.AssociatedWord);
         }
 
         LearningItem[] Items()

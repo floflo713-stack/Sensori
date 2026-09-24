@@ -96,6 +96,7 @@ namespace Sensori.Montessori
             Motion.Kill(_rect, "pos");
             Motion.Scale(_rect, Vector3.one * 1.06f, 0.12f, Ease.OutQuad);
             WoodenAudio.PlayTap();
+            FrenchVoice.SayItem(_item);
             if (TryLocal(eventData, out var local))
                 _grabOffset = _rect.anchoredPosition - local;
         }

@@ -7,6 +7,7 @@ namespace Sensori.Montessori
         public static WoodenAudio Instance { get; private set; }
 
         AudioSource _source;
+        AudioSource _voice;
         AudioClip _tap;
         AudioClip _tock;
         AudioClip _bellC;
@@ -27,6 +28,9 @@ namespace Sensori.Montessori
             _source.playOnAwake = false;
             _source.spatialBlend = 0f;
             _source.volume = 0.85f;
+            _voice = gameObject.AddComponent<AudioSource>();
+            _voice.playOnAwake = false;
+            _voice.spatialBlend = 0f;
             _tap = CreateBell("tap", 210f, 0.09f, 0.22f, 0.4f);
             _tock = CreateBell("tock", 150f, 0.12f, 0.18f, 0.2f);
             _bellC = CreateBell("bell-c", 523.25f, 0.55f, 0.22f, 0.15f);
@@ -67,6 +71,16 @@ namespace Sensori.Montessori
                 if (Instance != null)
                     Instance.Play(Instance._bellG, 0.6f);
             });
+        }
+
+        public void Say(AudioClip clip)
+        {
+            if (_voice == null || clip == null)
+                return;
+            _voice.Stop();
+            _voice.clip = clip;
+            _voice.volume = 1f;
+            _voice.Play();
         }
 
         void Play(AudioClip clip, float volume)
