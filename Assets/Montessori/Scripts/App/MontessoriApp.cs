@@ -14,7 +14,8 @@ namespace Sensori.Montessori
             "Fond", "ZoneSure", "Cadre", "Ombre", "Accent", "Icone",
             "Enseigne", "Legende", "Entete", "ZoneCartes", "ZoneJeux",
             "ZoneChoix", "SousTitre", "Compte", "Description", "Progression",
-            "Glyph", "Libelle", "Embleme", "Titre", "Etiquette", "Etincelles"
+            "Glyph", "Libelle", "Embleme", "Titre", "Etiquette", "Etincelles",
+            "Jeton", "Jetons", "Forme", "Lettre"
         };
 
         [SerializeField] ContentCatalog _catalog;
@@ -92,6 +93,11 @@ namespace Sensori.Montessori
         public void OnSensoriClicked()
         {
             Debug.Log("[Montessori] Clic détecté sur le bouton Sensori !");
+            if (_home != null)
+            {
+                _home.BeginDeparture(OpenCategories);
+                return;
+            }
             OpenCategories();
         }
 
@@ -179,14 +185,15 @@ namespace Sensori.Montessori
             });
         }
 
-        public void Celebrate(string title, string subtitle, string emblem, Color emblemColor, System.Action onContinue)
+        public void Celebrate(string title, string subtitle, string emblem, Color emblemColor, System.Action onContinue, string buttonLabel = null)
         {
             if (_celebration == null)
             {
                 onContinue?.Invoke();
                 return;
             }
-            _celebration.Show(title, subtitle, emblem, emblemColor, onContinue);
+            _celebration.transform.SetAsLastSibling();
+            _celebration.Show(title, subtitle, emblem, emblemColor, onContinue, buttonLabel);
         }
 
         public void Sparkle(Vector3 worldPosition, Color color)

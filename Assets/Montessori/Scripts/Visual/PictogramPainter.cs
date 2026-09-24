@@ -145,7 +145,11 @@ namespace Sensori.Montessori
                 case "game-puzzle": GamePuzzle(raster); return;
                 case "game-imagier": GameImagier(raster); return;
                 case "game-trace": GameTrace(raster); return;
-                default: Badge(raster, id); return;
+                default:
+                    if (DrawWord(raster, id))
+                        return;
+                    Badge(raster, id);
+                    return;
             }
         }
 

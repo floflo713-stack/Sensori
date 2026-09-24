@@ -41,34 +41,35 @@ namespace Sensori.Montessori
         }
     }
 
-    public sealed class SimpleClick : MonoBehaviour
+    public sealed class SimpleClick : MonoBehaviour, IPointerDownHandler
     {
         public event Action Clicked;
-        Button _button;
 
         void OnEnable()
         {
-            _button = UiFactory.CreateButton(gameObject);
-            _button.onClick.RemoveListener(Raise);
-            _button.onClick.AddListener(Raise);
+            var image = GetComponent<Image>();
+            if (image != null)
+                image.raycastTarget = true;
+            if (!Application.isPlaying)
+                return;
+            var button = GetComponent<Button>();
+            if (button != null)
+                Destroy(button);
         }
 
-        void OnDisable()
+        public void OnPointerDown(PointerEventData eventData)
         {
-            if (_button != null)
-                _button.onClick.RemoveListener(Raise);
-        }
-
-        void Raise()
-        {
+            if (eventData != null && eventData.button != PointerEventData.InputButton.Left)
+                return;
             Clicked?.Invoke();
         }
     }
 
-    public sealed class NavigationButton : MonoBehaviour
+    public sealed class NavigationButton : MonoBehaviour, IPointerDownHandler
     {
         [SerializeField] NavigationTarget _target = NavigationTarget.Home;
         Button _button;
+        int _actedFrame = -1;
 
         public void Configure(NavigationTarget target)
         {
@@ -77,6 +78,9 @@ namespace Sensori.Montessori
 
         void OnEnable()
         {
+            var image = GetComponent<Image>();
+            if (image != null)
+                image.raycastTarget = true;
             _button = UiFactory.CreateButton(gameObject);
             UiClick.Wire(_button, Navigate);
         }
@@ -87,8 +91,35 @@ namespace Sensori.Montessori
                 _button.onClick.RemoveListener(Navigate);
         }
 
+        void Update()
+        {
+            if (!isActiveAndEnabled || !Application.isPlaying)
+                return;
+            var pointer = UnityEngine.InputSystem.Pointer.current;
+            if (pointer == null || !pointer.press.wasPressedThisFrame)
+                return;
+            var rect = transform as RectTransform;
+            if (rect == null)
+                return;
+            var canvas = GetComponentInParent<Canvas>();
+            Camera cam = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay ? canvas.worldCamera : null;
+            if (!RectTransformUtility.RectangleContainsScreenPoint(rect, pointer.position.ReadValue(), cam))
+                return;
+            Navigate();
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            if (eventData != null && eventData.button != PointerEventData.InputButton.Left)
+                return;
+            Navigate();
+        }
+
         public void Navigate()
         {
+            if (_actedFrame == Time.frameCount)
+                return;
+            _actedFrame = Time.frameCount;
             var app = MontessoriApp.Instance;
             if (app == null)
                 return;
@@ -99,7 +130,7 @@ namespace Sensori.Montessori
         }
     }
 
-    public sealed class CategoryCard : MonoBehaviour
+    public sealed class CategoryCard : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] LearningCategory _category;
         [SerializeField] Text _title;
@@ -150,29 +181,38 @@ namespace Sensori.Montessori
             }
         }
 
-        Button _button;
+        int _openedFrame = -1;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                return;
+            Open();
+        }
 
         void OnEnable()
         {
-            _button = UiFactory.CreateButton(gameObject);
-            UiClick.Wire(_button, Open);
-        }
-
-        void OnDisable()
-        {
-            if (_button != null)
-                _button.onClick.RemoveListener(Open);
+            var button = GetComponent<Button>();
+            if (button != null)
+                button.onClick.RemoveListener(Open);
+            var face = transform.Find("Face");
+            var image = face != null ? face.GetComponent<Image>() : GetComponent<Image>();
+            if (image != null)
+                image.raycastTarget = true;
         }
 
         public void Open()
         {
+            if (_openedFrame == Time.frameCount)
+                return;
             if (_category == null || MontessoriApp.Instance == null)
                 return;
+            _openedFrame = Time.frameCount;
             MontessoriApp.Instance.OpenCategory(_category);
         }
     }
 
-    public sealed class GameCard : MonoBehaviour
+    public sealed class GameCard : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] MiniGameDefinition _definition;
         [SerializeField] Text _title;
@@ -205,24 +245,33 @@ namespace Sensori.Montessori
                 _description.text = _definition.Description;
         }
 
-        Button _button;
+        int _launchedFrame = -1;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                return;
+            Launch();
+        }
 
         void OnEnable()
         {
-            _button = UiFactory.CreateButton(gameObject);
-            UiClick.Wire(_button, Launch);
-        }
-
-        void OnDisable()
-        {
-            if (_button != null)
-                _button.onClick.RemoveListener(Launch);
+            var button = GetComponent<Button>();
+            if (button != null)
+                button.onClick.RemoveListener(Launch);
+            var face = transform.Find("Face");
+            var image = face != null ? face.GetComponent<Image>() : GetComponent<Image>();
+            if (image != null)
+                image.raycastTarget = true;
         }
 
         public void Launch()
         {
+            if (_launchedFrame == Time.frameCount)
+                return;
             if (_definition == null || MontessoriApp.Instance == null)
                 return;
+            _launchedFrame = Time.frameCount;
             MontessoriApp.Instance.StartGame(_definition);
         }
     }

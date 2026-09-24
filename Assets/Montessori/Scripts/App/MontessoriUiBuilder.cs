@@ -42,6 +42,7 @@ namespace Sensori.Montessori
             var home = homeObject.AddComponent<HomePresenter>();
             UiFactory.AddGroup(homeObject);
             home.Construct(theme, catalog);
+            home.SealWelcome();
 
             var categoryObject = UiFactory.Rect("Categories", safe).gameObject;
             UiFactory.Stretch(categoryObject.GetComponent<RectTransform>(), 0f, 0f, 0f, 0f);

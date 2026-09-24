@@ -90,7 +90,7 @@ namespace Sensori.Montessori.Editor
                 EditorUtility.ClearProgressBar();
                 EditorUtility.DisplayDialog(
                     "Sensori",
-                    "La scène Atelier est prête. Appuie sur Lecture.\n\nLes voyelles sont en bleu, les consonnes en rose. Relancer ce menu met à jour le contenu par défaut.",
+                    "La scène Atelier est prête. Appuie sur Lecture.\n\nTouche la plaque Sensori pour commencer. Relancer ce menu met à jour le contenu par défaut.",
                     "OK");
             }
             catch (Exception exception)

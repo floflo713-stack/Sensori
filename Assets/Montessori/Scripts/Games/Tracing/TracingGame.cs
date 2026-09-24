@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 namespace Sensori.Montessori
@@ -39,6 +40,10 @@ namespace Sensori.Montessori
         [SerializeField] Text _progress;
         [SerializeField] Text _instruction;
         [SerializeField] Text _symbol;
+        [SerializeField] Text _ghost;
+        RectTransform _trail;
+        readonly List<Image> _marks = new List<Image>();
+        readonly List<Vector2> _shown = new List<Vector2>();
         [SerializeField] RectTransform _board;
         [SerializeField] Image _boardFace;
         [SerializeField] RibbonGraphic _guide;
@@ -61,6 +66,7 @@ namespace Sensori.Montessori
         int _pointer = -1;
         bool _success;
         bool _advancing;
+        bool _drawing;
         float _idle;
 
         public override string GameId => GameIds.Tracing;
@@ -165,7 +171,8 @@ namespace Sensori.Montessori
 
         void Update()
         {
-            if (!isActiveAndEnabled || _success || _advancing || _pointer >= 0)
+            PollFinger();
+            if (!isActiveAndEnabled || _success || _advancing || _drawing)
                 return;
             _idle += Time.unscaledDeltaTime;
             if (_idle > 7f)
@@ -175,31 +182,96 @@ namespace Sensori.Montessori
             }
         }
 
-        public void PointerDown(PointerEventData eventData)
+        void PollFinger()
         {
-            if (_success || _advancing || eventData.button != PointerEventData.InputButton.Left)
+            if (!isActiveAndEnabled || _success || _advancing)
                 return;
-            if (_pointer >= 0)
+            var pointer = Pointer.current;
+            if (pointer == null)
                 return;
-            _pointer = eventData.pointerId;
-            _idle = 0f;
+            Vector2 screen = pointer.position.ReadValue();
+            Camera cam = EventCamera();
+            if (pointer.press.wasPressedThisFrame)
+            {
+                if (HitButton("Effacer", _clear, screen))
+                {
+                    ClearInk();
+                    return;
+                }
+                if (HitButton("Geste", _watch, screen))
+                {
+                    PlayHint();
+                    return;
+                }
+                var back = transform.Find("Entete/Retour") as RectTransform;
+                if (Hit(back, screen, 8f))
+                    return;
+                if (!Contains(_board, screen, cam))
+                    return;
+                BeginStroke(screen, cam);
+                return;
+            }
+            if (_drawing && pointer.press.isPressed)
+                ExtendStroke(screen, cam);
+            if (_drawing && pointer.press.wasReleasedThisFrame)
+            {
+                _drawing = false;
+                _pointer = -1;
+                Evaluate();
+            }
+        }
+
+        void BeginStroke(Vector2 screen, Camera cam)
+        {
+            if (_drawing)
+                return;
             StopHint();
+            _drawing = true;
+            _pointer = 0;
+            _idle = 0f;
             var gesture = new List<Vector2>(64);
             _gestures.Add(gesture);
-            AddPoint(eventData, gesture);
+            if (TryNormScreen(screen, cam, out var point))
+            {
+                gesture.Add(point);
+                PaintInk();
+            }
+        }
+
+        void ExtendStroke(Vector2 screen, Camera cam)
+        {
+            if (_gestures.Count == 0)
+                return;
+            if (!TryNormScreen(screen, cam, out var point))
+                return;
+            var gesture = _gestures[_gestures.Count - 1];
+            if (gesture.Count > 0 && (gesture[gesture.Count - 1] - point).sqrMagnitude < 0.00008f)
+                return;
+            if (gesture.Count > 700)
+                return;
+            gesture.Add(point);
+            PaintInk();
+        }
+
+        public void PointerDown(PointerEventData eventData)
+        {
+            if (_success || _advancing || _drawing || eventData == null || eventData.button != PointerEventData.InputButton.Left)
+                return;
+            BeginStroke(eventData.position, eventData.pressEventCamera);
         }
 
         public void PointerDrag(PointerEventData eventData)
         {
-            if (eventData.pointerId != _pointer || _gestures.Count == 0)
+            if (!_drawing || eventData == null)
                 return;
-            AddPoint(eventData, _gestures[_gestures.Count - 1]);
+            ExtendStroke(eventData.position, eventData.pressEventCamera);
         }
 
         public void PointerUp(PointerEventData eventData)
         {
-            if (eventData.pointerId != _pointer)
+            if (!_drawing)
                 return;
+            _drawing = false;
             _pointer = -1;
             Evaluate();
         }
@@ -216,8 +288,10 @@ namespace Sensori.Montessori
             _success = false;
             _advancing = false;
             _pointer = -1;
+            _drawing = false;
             _idle = 0f;
             _gestures.Clear();
+            ClearTrail();
             if (_ink != null)
                 _ink.ClearPaths();
             if (_progress != null)
@@ -230,11 +304,149 @@ namespace Sensori.Montessori
             if (_instruction != null)
                 _instruction.text = "Suis le chemin avec le doigt.";
             if (_boardFace != null && item != null)
-                _boardFace.color = Color.Lerp(Color.white, item.SymbolColor, item.Visual == ItemVisual.Swatch ? 0.55f : 0.12f);
+                _boardFace.color = Color.white;
+            DressBoard();
             BuildGuide(item);
-            RenderGuide();
+            Color ink = item != null ? item.SymbolColor : MontessoriPalette.ConsonantRose;
+            EnsureDrawn(_guide);
+            EnsureDrawn(_ink);
+            RenderGuide(ink);
             PlaceDots(item);
+            HideGhost();
+            ClearTrail();
+            if (_guide != null)
+                _guide.transform.SetAsLastSibling();
+            if (_trail != null)
+                _trail.SetAsLastSibling();
+            if (_symbol != null)
+                _symbol.transform.SetAsLastSibling();
+            if (_instruction != null)
+                _instruction.transform.SetAsLastSibling();
+            RaiseButtons();
             PlayHint();
+        }
+
+        void RaiseButtons()
+        {
+            var clear = transform.Find("Effacer");
+            var watch = transform.Find("Geste");
+            if (clear != null)
+                clear.SetAsLastSibling();
+            if (watch != null)
+                watch.SetAsLastSibling();
+        }
+
+        bool HitButton(string name, SimpleClick click, Vector2 screen)
+        {
+            var rect = transform.Find(name) as RectTransform;
+            if (rect == null && click != null)
+                rect = click.transform.parent as RectTransform;
+            return Hit(rect, screen, 18f);
+        }
+
+        static bool Hit(RectTransform rect, Vector2 screen, float pad)
+        {
+            if (rect == null)
+                return false;
+            var corners = new Vector3[4];
+            rect.GetWorldCorners(corners);
+            float minX = Mathf.Min(corners[0].x, corners[2].x) - pad;
+            float maxX = Mathf.Max(corners[0].x, corners[2].x) + pad;
+            float minY = Mathf.Min(corners[0].y, corners[2].y) - pad;
+            float maxY = Mathf.Max(corners[0].y, corners[2].y) + pad;
+            return screen.x >= minX && screen.x <= maxX && screen.y >= minY && screen.y <= maxY;
+        }
+
+        void DressBoard()
+        {
+            if (_board != null)
+                UiFactory.AnchorCenter(_board, new Vector2(0f, 36f), new Vector2(680f, 680f));
+            if (_instruction == null)
+                return;
+            var line = _instruction.rectTransform;
+            line.anchorMin = new Vector2(0f, 0f);
+            line.anchorMax = new Vector2(1f, 0f);
+            line.pivot = new Vector2(0.5f, 0f);
+            line.sizeDelta = new Vector2(-120f, 46f);
+            line.anchoredPosition = new Vector2(0f, 168f);
+        }
+
+        void HideGhost()
+        {
+            if (_ghost != null)
+                _ghost.gameObject.SetActive(false);
+        }
+
+        void EnsureTrail()
+        {
+            if (_trail != null || _board == null)
+                return;
+            _trail = UiFactory.Rect("Trait", _board);
+            UiFactory.Stretch(_trail, 36f, 36f, 36f, 36f);
+        }
+
+        void PaintInk()
+        {
+            EnsureTrail();
+            if (_trail == null)
+                return;
+            _trail.SetAsLastSibling();
+            if (_symbol != null)
+                _symbol.transform.SetAsLastSibling();
+            var item = CurrentItem();
+            Color ink = item != null ? item.SymbolColor : MontessoriPalette.ConsonantRose;
+            _shown.Clear();
+            for (int g = 0; g < _gestures.Count; g++)
+            {
+                var gesture = _gestures[g];
+                if (gesture.Count == 0)
+                    continue;
+                _shown.Add(gesture[0]);
+                float walked = 0f;
+                for (int i = 1; i < gesture.Count; i++)
+                {
+                    walked += Vector2.Distance(gesture[i - 1], gesture[i]);
+                    if (walked < 0.012f)
+                        continue;
+                    walked = 0f;
+                    _shown.Add(gesture[i]);
+                }
+                if (_shown.Count == 0 || _shown[_shown.Count - 1] != gesture[gesture.Count - 1])
+                    _shown.Add(gesture[gesture.Count - 1]);
+            }
+            while (_marks.Count < _shown.Count)
+            {
+                var mark = UiFactory.Picture("Trait", _trail, _pearl, ink, false, false);
+                _marks.Add(mark);
+            }
+            for (int i = 0; i < _marks.Count; i++)
+            {
+                bool on = i < _shown.Count;
+                _marks[i].gameObject.SetActive(on);
+                if (!on)
+                    continue;
+                _marks[i].color = ink;
+                UiFactory.AnchorCenter(_marks[i].rectTransform, NormToLocal(_shown[i]), new Vector2(30f, 30f));
+            }
+        }
+
+        void ClearTrail()
+        {
+            for (int i = 0; i < _marks.Count; i++)
+            {
+                if (_marks[i] != null)
+                    _marks[i].gameObject.SetActive(false);
+            }
+        }
+
+        static void EnsureDrawn(Graphic graphic)
+        {
+            if (graphic == null)
+                return;
+            if (graphic.GetComponent<CanvasRenderer>() == null)
+                graphic.gameObject.AddComponent<CanvasRenderer>();
+            graphic.enabled = true;
+            graphic.raycastTarget = false;
         }
 
         void BuildGuide(LearningItem item)
@@ -275,15 +487,18 @@ namespace Sensori.Montessori
             }
         }
 
-        void RenderGuide()
+        void RenderGuide(Color ink)
         {
             if (_guide == null)
                 return;
+            EnsureDrawn(_guide);
             _mesh.Clear();
             for (int i = 0; i < _guideStrokes.Count; i++)
                 _mesh.Add(ToLocal(_guideStrokes[i]));
-            float width = BoardWidth() * 0.065f;
-            _guide.SetPaths(_mesh, width, MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.55f));
+            Color chalk = Color.Lerp(new Color(1f, 0.98f, 0.94f, 1f), ink, 0.28f);
+            chalk.a = 1f;
+            float width = Mathf.Max(34f, BoardWidth() * 0.055f);
+            _guide.SetPaths(_mesh, width, chalk);
         }
 
         void RenderInk(Color color)
@@ -309,46 +524,95 @@ namespace Sensori.Montessori
             for (int i = _dots.childCount - 1; i >= 0; i--)
                 Destroy(_dots.GetChild(i).gameObject);
             Color color = item != null ? item.SymbolColor : MontessoriPalette.Sun;
-            for (int i = 0; i < _guideStrokes.Count; i++)
+            Color chalk = new Color(1f, 0.97f, 0.93f, 0.96f);
+            for (int s = 0; s < _guideStrokes.Count; s++)
             {
-                if (_guideStrokes[i].Count == 0)
+                var path = _guideStrokes[s];
+                if (path.Count == 0)
                     continue;
+                float walked = 1f;
+                for (int i = 0; i < path.Count; i++)
+                {
+                    if (i > 0)
+                        walked += Vector2.Distance(path[i - 1], path[i]);
+                    if (i > 0 && walked < 0.03f)
+                        continue;
+                    walked = 0f;
+                    var bead = UiFactory.Picture("Perle", _dots, _pearl, chalk, false, false);
+                    UiFactory.AnchorCenter(bead.rectTransform, NormToLocal(path[i]), new Vector2(22f, 22f));
+                }
+                Vector2 at = NormToLocal(path[0]);
+                var halo = UiFactory.Picture("Depart", _dots, _pearl, chalk, false, false);
+                UiFactory.AnchorCenter(halo.rectTransform, at, new Vector2(40f, 40f));
                 var dot = UiFactory.Picture("Depart", _dots, _pearl, color, false, false);
-                UiFactory.AnchorCenter(dot.rectTransform, NormToLocal(_guideStrokes[i][0]), new Vector2(i == 0 ? 28f : 18f, i == 0 ? 28f : 18f));
+                UiFactory.AnchorCenter(dot.rectTransform, at, new Vector2(s == 0 ? 24f : 18f, s == 0 ? 24f : 18f));
             }
         }
 
-        void AddPoint(PointerEventData eventData, List<Vector2> gesture)
+        bool TryNormScreen(Vector2 screen, Camera cam, out Vector2 normalized)
         {
-            if (!TryNorm(eventData, out var point))
-                return;
-            if (gesture.Count > 0 && (gesture[gesture.Count - 1] - point).sqrMagnitude < 0.00008f)
-                return;
-            if (gesture.Count > 700)
-                return;
-            gesture.Add(point);
-            var item = CurrentItem();
-            Color ink = item != null ? item.SymbolColor : MontessoriPalette.Ink;
-            RenderInk(ink);
+            normalized = Vector2.zero;
+            var area = GuideRect();
+            if (area == null)
+                return false;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, screen, cam, out var local))
+                return false;
+            var rect = area.rect;
+            if (rect.width <= 1f || rect.height <= 1f)
+                return false;
+            normalized = new Vector2(
+                Mathf.InverseLerp(rect.xMin, rect.xMax, local.x),
+                Mathf.InverseLerp(rect.yMin, rect.yMax, local.y));
+            return true;
+        }
+
+        Camera EventCamera()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                return canvas.worldCamera;
+            return null;
+        }
+
+        static bool Contains(RectTransform rect, Vector2 screen, Camera cam)
+        {
+            return rect != null && RectTransformUtility.RectangleContainsScreenPoint(rect, screen, cam);
+        }
+
+        static bool Pressed(SimpleClick click, Vector2 screen, Camera cam)
+        {
+            if (click == null)
+                return false;
+            var own = click.transform as RectTransform;
+            var parent = click.transform.parent as RectTransform;
+            if (Contains(parent, screen, cam) || Contains(own, screen, cam))
+                return true;
+            return false;
         }
 
         void Evaluate()
         {
-            if (_success || _flatGuide.Count == 0)
+            if (_success || _guideStrokes.Count == 0 || _flatGuide.Count == 0)
                 return;
             _flatUser.Clear();
-            int count = 0;
             for (int i = 0; i < _gestures.Count; i++)
             {
-                count += _gestures[i].Count;
                 for (int p = 0; p < _gestures[i].Count; p++)
                     _flatUser.Add(_gestures[i][p]);
             }
-            if (count < 8)
+            if (_flatUser.Count < 16)
                 return;
-            float recall = PolylineMath.Recall(_flatGuide, _flatUser, 0.085f);
-            float precision = PolylineMath.Precision(_flatGuide, _flatUser, 0.1f);
-            if (recall < 0.74f || precision < 0.4f)
+            float guideLength = 0f;
+            for (int i = 0; i < _guideStrokes.Count; i++)
+                guideLength += PolylineMath.Length(_guideStrokes[i]);
+            if (PolylineMath.Length(_flatUser) < guideLength * 0.7f)
+                return;
+            for (int i = 0; i < _guideStrokes.Count; i++)
+            {
+                if (PolylineMath.Recall(_guideStrokes[i], _flatUser, 0.055f) < 0.84f)
+                    return;
+            }
+            if (PolylineMath.Precision(_flatGuide, _flatUser, 0.065f) < 0.62f)
                 return;
             Succeed();
         }
@@ -404,6 +668,7 @@ namespace Sensori.Montessori
             if (_success)
                 return;
             _gestures.Clear();
+            ClearTrail();
             if (_ink != null)
                 _ink.ClearPaths();
             _idle = 0f;
@@ -414,8 +679,10 @@ namespace Sensori.Montessori
             if (_guideStrokes.Count == 0 || _hint == null || _success)
                 return;
             StopHint();
+            _hint.transform.SetAsLastSibling();
+            _hint.rectTransform.sizeDelta = new Vector2(58f, 58f);
             _hint.gameObject.SetActive(true);
-            var color = _hint.color;
+            var color = CurrentItem() != null ? CurrentItem().SymbolColor : MontessoriPalette.Sun;
             color.a = 1f;
             _hint.color = color;
             float duration = Mathf.Clamp(1.3f + _flatGuide.Count * 0.012f, 1.6f, 3.6f);
@@ -426,6 +693,7 @@ namespace Sensori.Montessori
         {
             if (_hint == null || _guideStrokes.Count == 0)
                 return;
+            _hint.transform.SetAsLastSibling();
             float scaled = Mathf.Clamp01(u) * _guideStrokes.Count;
             int stroke = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, _guideStrokes.Count - 1);
             float along = scaled - stroke;
@@ -444,23 +712,6 @@ namespace Sensori.Montessori
         {
             if (_hint != null)
                 _hint.gameObject.SetActive(false);
-        }
-
-        bool TryNorm(PointerEventData eventData, out Vector2 normalized)
-        {
-            normalized = Vector2.zero;
-            if (_board == null)
-                return false;
-            var area = GuideRect();
-            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(area, eventData.position, eventData.pressEventCamera, out var local))
-                return false;
-            var rect = area.rect;
-            if (rect.width <= 1f || rect.height <= 1f)
-                return false;
-            normalized = new Vector2(
-                Mathf.InverseLerp(rect.xMin, rect.xMax, local.x),
-                Mathf.InverseLerp(rect.yMin, rect.yMax, local.y));
-            return true;
         }
 
         Vector2 NormToLocal(Vector2 normalized)

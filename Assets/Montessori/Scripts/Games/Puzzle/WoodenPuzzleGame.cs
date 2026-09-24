@@ -279,11 +279,13 @@ namespace Sensori.Montessori
             var app = MontessoriApp.Instance;
             if (app == null)
                 return;
-            string subtitle = completeNow && !_categoryWasComplete
+            bool finishedCategory = completeNow && !_categoryWasComplete;
+            string subtitle = finishedCategory
                 ? "Tu as tout rangé dans l'atelier."
                 : "Les pièces ont trouvé leur place.";
+            string button = finishedCategory ? "Continuer" : "Encore";
             Motion.Float(0f, 1f, 0.05f, _ => { }, Ease.Linear, this, "finale")
-                .SetDelay(0.45f)
+                .SetDelay(0.35f)
                 .OnComplete(() =>
                 {
                     if (!isActiveAndEnabled || MontessoriApp.Instance == null)
@@ -299,7 +301,7 @@ namespace Sensori.Montessori
                             _categoryWasComplete = IsCategoryComplete();
                             SpawnRound();
                         }
-                    });
+                    }, button);
                 });
         }
 

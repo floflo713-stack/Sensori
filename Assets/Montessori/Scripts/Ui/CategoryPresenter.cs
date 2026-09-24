@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,6 +14,10 @@ namespace Sensori.Montessori
         readonly List<GameCard> _cards = new List<GameCard>();
         readonly List<CategoryCard> _choiceCards = new List<CategoryCard>();
         bool _showingGames;
+        bool _choiceLayoutDirty;
+        bool _gameLayoutDirty;
+        bool _choicesIntroPending;
+        bool _gamesIntroPending;
 
         public bool ShowingGames => _showingGames;
 
@@ -23,9 +28,8 @@ namespace Sensori.Montessori
 
             BuildHeader(theme);
             _choices = UiFactory.Rect("ZoneChoix", transform);
-            UiFactory.Stretch(_choices, 36f, 48f, 36f, 168f);
             _area = UiFactory.Rect("ZoneJeux", transform);
-            UiFactory.Stretch(_area, 48f, 48f, 48f, 168f);
+            FitZones();
 
             BuildChoices(catalog, theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null, theme);
             if (games == null || games.Length == 0)
@@ -42,24 +46,21 @@ namespace Sensori.Montessori
         public void EnsureMenus(ContentCatalog catalog, Sprite panel, Sprite shadow)
         {
             EnsureRefs();
+            var theme = HarvestTheme(panel, shadow);
             if (_choices == null)
-            {
                 _choices = UiFactory.Rect("ZoneChoix", transform);
-                UiFactory.Stretch(_choices, 36f, 48f, 36f, 168f);
-            }
             if (_area == null)
-            {
                 _area = UiFactory.Rect("ZoneJeux", transform);
-                UiFactory.Stretch(_area, 48f, 48f, 48f, 168f);
-            }
+            FitZones();
+            RestyleHeader();
 
-            CacheChoices();
-            if (_choiceCards.Count == 0)
-                BuildChoices(catalog, panel, shadow, null);
+            RetireChildren(_choices);
+            _choiceCards.Clear();
+            BuildChoices(catalog, theme.Panel, theme.Shadow, theme);
 
-            Cache();
-            if (_cards.Count == 0)
-                BuildGames(GamesFrom(catalog), panel, shadow, null);
+            RetireChildren(_area);
+            _cards.Clear();
+            BuildGames(GamesFrom(catalog), theme.Panel, theme.Shadow, theme);
 
             if (!_showingGames)
             {
@@ -67,6 +68,9 @@ namespace Sensori.Montessori
                 _choices.gameObject.SetActive(true);
             }
             ApplyChoiceFonts();
+            Canvas.ForceUpdateCanvases();
+            _choicesIntroPending = false;
+            LayoutChoices();
         }
 
         public void ShowChoices()
@@ -91,9 +95,12 @@ namespace Sensori.Montessori
                     _choiceCards[i].Refresh();
             }
             ApplyChoiceFonts();
+            if (_choices != null)
+                _choices.SetSiblingIndex(1);
+            _choicesIntroPending = true;
             Canvas.ForceUpdateCanvases();
-            LayoutChoices();
-            PlayChoiceIntro();
+            if (!LayoutChoices())
+                ParkUntilLaidOut(_choiceCards);
         }
 
         public void Show(LearningCategory category)
@@ -120,26 +127,34 @@ namespace Sensori.Montessori
                 bool available = category != null && category.HasGame(card.GameId);
                 card.Root.gameObject.SetActive(available);
                 card.Refresh();
-                ApplyFont(card.Root.GetComponentInChildren<Text>(true));
+                var labels = card.Root.GetComponentsInChildren<Text>(true);
+                for (int t = 0; t < labels.Length; t++)
+                    ApplyFont(labels[t]);
             }
+            if (_area != null)
+                _area.SetSiblingIndex(1);
+            _gamesIntroPending = true;
             Canvas.ForceUpdateCanvases();
-            Layout();
-            PlayIntro();
+            if (!Layout())
+                ParkUntilLaidOut(_cards);
         }
 
         void BuildHeader(ThemeAssets theme)
         {
             var header = UiFactory.Rect("Entete", transform);
-            UiFactory.AnchorTop(header, 140f, 28f, 28f);
+            UiFactory.AnchorTop(header, 156f, 28f, 28f);
             if (theme != null)
                 BuildBackButton(header, theme);
 
-            _title = UiFactory.Label("Titre", header, "Catégories", 52, MontessoriPalette.Ink, TextAnchor.MiddleCenter);
-            UiFactory.Stretch(_title.rectTransform, 140f, 36f, 140f, 8f);
+            _title = UiFactory.Label("Titre", header, "Catégories", 48, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
+            UiFactory.Stretch(_title.rectTransform, 120f, 64f, 120f, 6f);
             _title.font = ReadableFont();
-            _subtitle = UiFactory.Label("SousTitre", header, "Alphabet, chiffres, formes et couleurs", 26, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
-            UiFactory.Stretch(_subtitle.rectTransform, 140f, 8f, 140f, 78f);
+            _title.fontStyle = FontStyle.Bold;
+            _title.alignByGeometry = false;
+            _subtitle = UiFactory.Label("SousTitre", header, "Alphabet, chiffres, formes et couleurs", 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
+            UiFactory.Stretch(_subtitle.rectTransform, 120f, 10f, 120f, 96f);
             _subtitle.font = ReadableFont();
+            _subtitle.alignByGeometry = false;
         }
 
         static void BuildBackButton(Transform header, ThemeAssets theme)
@@ -188,58 +203,31 @@ namespace Sensori.Montessori
         void CreateChoice(LearningCategory category, Sprite panel, Sprite shadow, ThemeAssets theme)
         {
             var root = UiFactory.Rect("Choix_" + category.CategoryId, _choices);
-            UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(340f, 420f));
+            UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(300f, 392f));
             var group = UiFactory.AddGroup(root.gameObject);
-            if (shadow != null)
-            {
-                var shadowImage = UiFactory.Picture("Ombre", root, shadow, MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.26f), false, false);
-                UiFactory.Stretch(shadowImage.rectTransform, -16f, -28f, -16f, -6f);
-                shadowImage.raycastTarget = false;
-            }
+            BuildShadow(root, shadow);
 
-            var face = UiFactory.Picture("Face", root, panel, Color.white, panel != null, true);
-            UiFactory.Stretch(face.rectTransform, 0f, 0f, 0f, 0f);
-            face.preserveAspect = false;
-            face.raycastTarget = true;
+            var face = BuildFace(root, panel);
+            Sprite pearl = theme != null ? theme.Pearl : null;
+            BuildHalo(face.transform, pearl, category.Accent);
+            RectTransform medal;
+            if (category.CategoryId == "alphabet")
+            {
+                medal = BuildMedallion(face.transform, pearl);
+                BuildAlphabetMark(medal);
+            }
+            else
+                medal = BuildBadge(face.transform, theme != null ? theme.IconForCategory(category.CategoryId) : null, pearl);
+
+            BuildRibbon(face.transform, pearl, category.Accent);
+
+            var title = BuildTitle(face.transform, category.Title, 36);
+            var count = BuildCaption(face.transform, "Compte", "", 22, MontessoriPalette.InkSoft);
+
             face.gameObject.AddComponent<Pressable>();
-
-            var accent = UiFactory.Picture("Accent", face.transform, null, category.Accent, false, false);
-            accent.rectTransform.anchorMin = new Vector2(0.1f, 1f);
-            accent.rectTransform.anchorMax = new Vector2(0.9f, 1f);
-            accent.rectTransform.pivot = new Vector2(0.5f, 1f);
-            accent.rectTransform.sizeDelta = new Vector2(0f, 14f);
-            accent.rectTransform.anchoredPosition = new Vector2(0f, -22f);
-            accent.raycastTarget = false;
-
-            if (theme != null)
-            {
-                var icon = UiFactory.Picture("Icone", face.transform, theme.IconForCategory(category.CategoryId), Color.white, false, false);
-                UiFactory.AnchorCenter(icon.rectTransform, new Vector2(0f, 70f), new Vector2(150f, 150f));
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-            }
-
-            var title = UiFactory.Label("Etiquette", face.transform, category.Title, 40, MontessoriPalette.Ink, TextAnchor.MiddleCenter);
-            title.rectTransform.anchorMin = new Vector2(0.08f, theme != null ? 0.16f : 0.28f);
-            title.rectTransform.anchorMax = new Vector2(0.92f, theme != null ? 0.42f : 0.72f);
-            title.rectTransform.offsetMin = Vector2.zero;
-            title.rectTransform.offsetMax = Vector2.zero;
-            title.font = ReadableFont();
-            title.resizeTextForBestFit = true;
-            title.resizeTextMinSize = 22;
-            title.resizeTextMaxSize = 42;
-            title.raycastTarget = false;
-
-            var count = UiFactory.Label("Compte", face.transform, "", 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
-            count.rectTransform.anchorMin = new Vector2(0.08f, 0.06f);
-            count.rectTransform.anchorMax = new Vector2(0.92f, 0.18f);
-            count.rectTransform.offsetMin = Vector2.zero;
-            count.rectTransform.offsetMax = Vector2.zero;
-            count.font = ReadableFont();
-            count.raycastTarget = false;
-
+            root.gameObject.AddComponent<ShelfTile>().Apply();
             var card = face.gameObject.AddComponent<CategoryCard>();
-            card.Bind(category, title, count, root, face.rectTransform, group);
+            card.Bind(category, title, count, root, medal, group);
             card.Refresh();
             _choiceCards.Add(card);
         }
@@ -247,53 +235,24 @@ namespace Sensori.Montessori
         void CreateGame(MiniGameDefinition game, Sprite panel, Sprite shadow, ThemeAssets theme)
         {
             var root = UiFactory.Rect("Jeu_" + game.GameId, _area);
-            UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(420f, 520f));
+            UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(360f, 460f));
             var group = UiFactory.AddGroup(root.gameObject);
-            if (shadow != null)
-            {
-                var shadowImage = UiFactory.Picture("Ombre", root, shadow, MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.26f), false, false);
-                UiFactory.Stretch(shadowImage.rectTransform, -16f, -28f, -16f, -6f);
-                shadowImage.raycastTarget = false;
-            }
+            BuildShadow(root, shadow);
 
-            var face = UiFactory.Picture("Face", root, panel, Color.white, panel != null, true);
-            UiFactory.Stretch(face.rectTransform, 0f, 0f, 0f, 0f);
-            face.preserveAspect = false;
-            face.raycastTarget = true;
+            var face = BuildFace(root, panel);
+            Sprite pearl = theme != null ? theme.Pearl : null;
+            BuildHalo(face.transform, pearl, game.Accent);
+            var medal = BuildBadge(face.transform, theme != null ? theme.IconForGame(game.GameId) : null, pearl);
+            BuildRibbon(face.transform, pearl, game.Accent);
+
+            var title = BuildTitle(face.transform, game.Title, 34);
+            var description = BuildCaption(face.transform, "Description", game.Description, 22, MontessoriPalette.InkSoft);
+            description.resizeTextForBestFit = true;
+            description.resizeTextMinSize = 16;
+            description.resizeTextMaxSize = 24;
+
             face.gameObject.AddComponent<Pressable>();
-
-            var accent = UiFactory.Picture("Accent", face.transform, null, game.Accent, false, false);
-            accent.rectTransform.anchorMin = new Vector2(0.12f, 1f);
-            accent.rectTransform.anchorMax = new Vector2(0.88f, 1f);
-            accent.rectTransform.pivot = new Vector2(0.5f, 1f);
-            accent.rectTransform.sizeDelta = new Vector2(0f, 14f);
-            accent.rectTransform.anchoredPosition = new Vector2(0f, -26f);
-            accent.raycastTarget = false;
-
-            if (theme != null)
-            {
-                var icon = UiFactory.Picture("Icone", face.transform, theme.IconForGame(game.GameId), Color.white, false, false);
-                UiFactory.AnchorCenter(icon.rectTransform, new Vector2(0f, 90f), new Vector2(180f, 180f));
-                icon.preserveAspect = true;
-                icon.raycastTarget = false;
-            }
-
-            var title = UiFactory.Label("Titre", face.transform, game.Title, 36, MontessoriPalette.Ink, TextAnchor.MiddleCenter);
-            title.rectTransform.anchorMin = new Vector2(0.08f, 0.24f);
-            title.rectTransform.anchorMax = new Vector2(0.92f, 0.42f);
-            title.rectTransform.offsetMin = Vector2.zero;
-            title.rectTransform.offsetMax = Vector2.zero;
-            title.font = ReadableFont();
-            title.raycastTarget = false;
-
-            var description = UiFactory.Label("Description", face.transform, game.Description, 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
-            description.rectTransform.anchorMin = new Vector2(0.1f, 0.08f);
-            description.rectTransform.anchorMax = new Vector2(0.9f, 0.26f);
-            description.rectTransform.offsetMin = Vector2.zero;
-            description.rectTransform.offsetMax = Vector2.zero;
-            description.font = ReadableFont();
-            description.raycastTarget = false;
-
+            root.gameObject.AddComponent<ShelfTile>().Apply();
             var card = face.gameObject.AddComponent<GameCard>();
             card.Bind(game, title, description, root, group);
         }
@@ -331,31 +290,21 @@ namespace Sensori.Montessori
             return false;
         }
 
+        void LateUpdate()
+        {
+            if (!isActiveAndEnabled)
+                return;
+            if (!_showingGames && _choiceLayoutDirty)
+                LayoutChoices();
+            else if (_showingGames && _gameLayoutDirty)
+                Layout();
+        }
+
         void PlayChoiceIntro()
         {
             CacheChoices();
             for (int i = 0; i < _choiceCards.Count; i++)
-            {
-                var card = _choiceCards[i];
-                if (card == null || card.Root == null)
-                    continue;
-                if (!Application.isPlaying)
-                {
-                    card.Root.localScale = Vector3.one;
-                    if (card.Group != null)
-                        card.Group.alpha = 1f;
-                    continue;
-                }
-                if (card.Group != null)
-                {
-                    card.Group.alpha = 1f;
-                    card.Group.interactable = true;
-                    card.Group.blocksRaycasts = true;
-                }
-                card.Root.localScale = Vector3.one * 0.94f;
-                float delay = 0.04f + i * 0.06f;
-                Motion.Scale(card.Root, Vector3.one, 0.42f, Ease.OutBack).SetDelay(delay);
-            }
+                PlayTileIntro(_choiceCards[i] != null ? _choiceCards[i].Root : null, _choiceCards[i] != null ? _choiceCards[i].Group : null, i);
         }
 
         void PlayIntro()
@@ -366,24 +315,33 @@ namespace Sensori.Montessori
                 var card = _cards[i];
                 if (card == null || card.Root == null || !card.Root.gameObject.activeSelf)
                     continue;
-                var root = card.Root;
-                var group = card.Group;
-                if (!Application.isPlaying)
-                {
-                    root.localScale = Vector3.one;
-                    if (group != null)
-                        group.alpha = 1f;
-                    continue;
-                }
-                root.localScale = Vector3.one * 0.92f;
-                if (group != null)
-                    group.alpha = 0f;
-                float delay = 0.04f + visibleIndex * 0.08f;
-                Motion.Scale(root, Vector3.one, 0.46f, Ease.OutBack).SetDelay(delay);
-                if (group != null)
-                    Motion.Fade(group, 1f, 0.3f, Ease.OutQuad).SetDelay(delay);
+                PlayTileIntro(card.Root, card.Group, visibleIndex);
                 visibleIndex++;
             }
+        }
+
+        static void PlayTileIntro(RectTransform root, CanvasGroup group, int index)
+        {
+            if (root == null)
+                return;
+            if (group != null)
+            {
+                group.alpha = 1f;
+                group.interactable = true;
+                group.blocksRaycasts = true;
+            }
+            if (!Application.isPlaying)
+            {
+                root.localScale = Vector3.one;
+                return;
+            }
+            Motion.Kill(root, "scale");
+            root.localScale = Vector3.one * 0.97f;
+            Motion.Scale(root, Vector3.one, 0.36f, Ease.OutCubic).SetDelay(0.03f + index * 0.05f).OnComplete(() =>
+            {
+                if (root != null)
+                    root.localScale = Vector3.one;
+            });
         }
 
         void OnRectTransformDimensionsChange()
@@ -442,40 +400,39 @@ namespace Sensori.Montessori
                 _choiceCards.Add(found[i]);
         }
 
-        void LayoutChoices()
+        bool LayoutChoices()
         {
             CacheChoices();
             if (_choices == null || _choiceCards.Count == 0)
-                return;
-            float width = _choices.rect.width;
-            float height = _choices.rect.height;
-            if (width < 80f)
-                width = 1700f;
-            if (height < 80f)
-                height = 760f;
-
-            int count = _choiceCards.Count;
-            float gap = 28f;
-            float cardW = Mathf.Min(380f, (width - gap * (count - 1)) / count);
-            float cardH = Mathf.Min(height - 8f, cardW * 1.22f);
-            float total = count * cardW + (count - 1) * gap;
-            float x = -total * 0.5f + cardW * 0.5f;
-            for (int i = 0; i < count; i++)
             {
-                var root = _choiceCards[i].Root;
-                if (root == null)
-                    continue;
-                root.gameObject.SetActive(true);
-                root.anchoredPosition = new Vector2(x, 0f);
-                root.sizeDelta = new Vector2(cardW, cardH);
-                x += cardW + gap;
+                _choiceLayoutDirty = false;
+                return false;
             }
+            var tiles = new List<RectTransform>(_choiceCards.Count);
+            for (int i = 0; i < _choiceCards.Count; i++)
+            {
+                if (_choiceCards[i] != null && _choiceCards[i].Root != null)
+                    tiles.Add(_choiceCards[i].Root);
+            }
+            bool placed = PlaceAll(_choices, tiles, 360f, 1.22f);
+            _choiceLayoutDirty = !placed;
+            if (!placed)
+                return false;
+            if (_choicesIntroPending)
+            {
+                _choicesIntroPending = false;
+                PlayChoiceIntro();
+            }
+            return true;
         }
 
-        void Layout()
+        bool Layout()
         {
             if (_area == null)
-                return;
+            {
+                _gameLayoutDirty = false;
+                return false;
+            }
             Cache();
             var visible = new List<RectTransform>();
             for (int i = 0; i < _cards.Count; i++)
@@ -484,24 +441,387 @@ namespace Sensori.Montessori
                     visible.Add(_cards[i].Root);
             }
             if (visible.Count == 0)
-                return;
-            float width = _area.rect.width;
-            float height = _area.rect.height;
-            if (width < 80f)
-                width = 1600f;
-            if (height < 80f)
-                height = 700f;
-            int count = visible.Count;
-            float gap = 32f;
-            float cardW = Mathf.Min(460f, (width - gap * (count - 1)) / count);
-            float cardH = Mathf.Min(height - 12f, cardW * 1.18f);
-            float total = count * cardW + (count - 1) * gap;
-            float x = -total * 0.5f + cardW * 0.5f;
+            {
+                _gameLayoutDirty = false;
+                return true;
+            }
+            bool placed = PlaceAll(_area, visible, 400f, 1.2f);
+            _gameLayoutDirty = !placed;
+            if (!placed)
+                return false;
+            if (_gamesIntroPending)
+            {
+                _gamesIntroPending = false;
+                PlayIntro();
+            }
+            return true;
+        }
+
+        static bool PlaceAll(RectTransform area, List<RectTransform> tiles, float maxCardWidth, float heightRatio)
+        {
+            if (area == null || tiles == null || tiles.Count == 0)
+                return false;
+            float width = area.rect.width;
+            float height = area.rect.height;
+            if (width < 160f || height < 160f)
+                return false;
+
+            int count = tiles.Count;
+            const float gap = 40f;
+            int rows = 1;
+            int columns = count;
+            float cardW = (width - gap * (columns - 1)) / columns;
+            if (cardW > maxCardWidth)
+                cardW = maxCardWidth;
+            if (count > 3 && cardW < 230f)
+            {
+                rows = 2;
+                columns = Mathf.CeilToInt(count * 0.5f);
+                cardW = (width - gap * (columns - 1)) / columns;
+                if (cardW > maxCardWidth)
+                    cardW = maxCardWidth;
+            }
+
+            float maxRowH = rows == 1 ? height : (height - gap) / rows;
+            float cardH = cardW * heightRatio;
+            if (cardH > maxRowH)
+            {
+                cardH = maxRowH;
+                cardW = cardH / heightRatio;
+            }
+            float rowW = columns * cardW + (columns - 1) * gap;
+            if (rowW > width)
+            {
+                cardW = (width - gap * (columns - 1)) / columns;
+                cardH = Mathf.Min(cardW * heightRatio, maxRowH);
+            }
+            if (cardW < 48f || cardH < 48f)
+                return false;
+
+            float totalH = rows * cardH + (rows - 1) * gap;
+            float yTop = totalH * 0.5f - cardH * 0.5f - 6f;
             for (int i = 0; i < count; i++)
             {
-                visible[i].anchoredPosition = new Vector2(x, -10f);
-                visible[i].sizeDelta = new Vector2(cardW, cardH);
-                x += cardW + gap;
+                var tile = tiles[i];
+                if (tile == null)
+                    continue;
+                int row = i / columns;
+                int col = i % columns;
+                int inRow = Mathf.Min(columns, count - row * columns);
+                float thisRow = inRow * cardW + (inRow - 1) * gap;
+                float x = -thisRow * 0.5f + cardW * 0.5f + col * (cardW + gap);
+                float y = yTop - row * (cardH + gap);
+                tile.anchorMin = new Vector2(0.5f, 0.5f);
+                tile.anchorMax = new Vector2(0.5f, 0.5f);
+                tile.pivot = new Vector2(0.5f, 0.5f);
+                if (tile.localScale.x < 0.2f)
+                    tile.localScale = Vector3.one;
+                tile.sizeDelta = new Vector2(cardW, cardH);
+                tile.anchoredPosition = new Vector2(x, y);
+                tile.SetSiblingIndex(i);
+                var group = tile.GetComponent<CanvasGroup>();
+                if (group != null)
+                {
+                    group.alpha = 1f;
+                    group.interactable = true;
+                    group.blocksRaycasts = true;
+                }
+                var shelf = tile.GetComponent<ShelfTile>();
+                if (shelf != null)
+                    shelf.Apply();
+            }
+            return true;
+        }
+
+        void FitZones()
+        {
+            if (_choices != null)
+                UiFactory.Stretch(_choices, 72f, 36f, 72f, 180f);
+            if (_area != null)
+                UiFactory.Stretch(_area, 72f, 36f, 72f, 180f);
+        }
+
+        void RestyleHeader()
+        {
+            var header = transform.Find("Entete") as RectTransform;
+            if (header != null)
+                UiFactory.AnchorTop(header, 156f, 28f, 28f);
+            if (_title != null)
+            {
+                _title.fontSize = 48;
+                _title.fontStyle = FontStyle.Bold;
+                _title.color = MontessoriPalette.WalnutDeep;
+                _title.alignByGeometry = false;
+                UiFactory.Stretch(_title.rectTransform, 120f, 64f, 120f, 8f);
+                ApplyFont(_title);
+            }
+            if (_subtitle != null)
+            {
+                _subtitle.fontSize = 24;
+                _subtitle.color = MontessoriPalette.InkSoft;
+                _subtitle.alignByGeometry = false;
+                _subtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
+                _subtitle.verticalOverflow = VerticalWrapMode.Overflow;
+                UiFactory.Stretch(_subtitle.rectTransform, 120f, 10f, 120f, 92f);
+                ApplyFont(_subtitle);
+            }
+        }
+
+        ThemeAssets HarvestTheme(Sprite panel, Sprite shadow)
+        {
+            var theme = new ThemeAssets
+            {
+                Panel = panel,
+                Shadow = shadow
+            };
+            var images = transform.root.GetComponentsInChildren<Image>(true);
+            for (int i = 0; i < images.Length; i++)
+            {
+                var image = images[i];
+                if (image == null || image.sprite == null)
+                    continue;
+                string spriteName = image.sprite.name.ToLowerInvariant();
+                if (theme.Panel == null && (spriteName.Contains("panel") || spriteName.Contains("wood-plate")) && spriteName.IndexOf("icon", StringComparison.Ordinal) < 0)
+                    theme.Panel = image.sprite;
+                if (theme.Shadow == null && spriteName.Contains("shadow"))
+                    theme.Shadow = image.sprite;
+                if (theme.Pearl == null && spriteName.Contains("pearl"))
+                    theme.Pearl = image.sprite;
+                NoteIcon(theme, image);
+            }
+            if (theme.Pearl == null)
+            {
+                var pearlFace = transform.Find("Entete/Retour/Face");
+                var pearlImage = pearlFace != null ? pearlFace.GetComponent<Image>() : null;
+                if (pearlImage != null)
+                    theme.Pearl = pearlImage.sprite;
+            }
+            return theme;
+        }
+
+        static void NoteIcon(ThemeAssets theme, Image image)
+        {
+            string spriteName = image.sprite.name.ToLowerInvariant();
+            if (theme.IconAlphabet == null && (spriteName.Contains("alphabet")))
+                theme.IconAlphabet = image.sprite;
+            if (theme.IconDigits == null && (spriteName.Contains("digit")))
+                theme.IconDigits = image.sprite;
+            if (theme.IconShapes == null && (spriteName.Contains("shape")))
+                theme.IconShapes = image.sprite;
+            if (theme.IconColors == null && (spriteName.Contains("color") || spriteName.Contains("colour")))
+                theme.IconColors = image.sprite;
+            if (theme.IconPuzzle == null && spriteName.Contains("puzzle"))
+                theme.IconPuzzle = image.sprite;
+            if (theme.IconImagier == null && spriteName.Contains("imagier"))
+                theme.IconImagier = image.sprite;
+            if (theme.IconTrace == null && (spriteName.Contains("trace") || spriteName.Contains("trac")))
+                theme.IconTrace = image.sprite;
+
+            if (image.gameObject.name != "Icone")
+                return;
+            Transform cursor = image.transform.parent;
+            while (cursor != null)
+            {
+                if (cursor.name.StartsWith("Choix_"))
+                {
+                    AssignCategoryIcon(theme, cursor.name.Substring(6), image.sprite);
+                    return;
+                }
+                if (cursor.name.StartsWith("Jeu_"))
+                {
+                    AssignGameIcon(theme, cursor.name.Substring(4), image.sprite);
+                    return;
+                }
+                cursor = cursor.parent;
+            }
+        }
+
+        static void AssignCategoryIcon(ThemeAssets theme, string categoryId, Sprite sprite)
+        {
+            if (categoryId == "alphabet" && theme.IconAlphabet == null)
+                theme.IconAlphabet = sprite;
+            else if (categoryId == "chiffres" && theme.IconDigits == null)
+                theme.IconDigits = sprite;
+            else if (categoryId == "formes" && theme.IconShapes == null)
+                theme.IconShapes = sprite;
+            else if (categoryId == "couleurs" && theme.IconColors == null)
+                theme.IconColors = sprite;
+        }
+
+        static void AssignGameIcon(ThemeAssets theme, string gameId, Sprite sprite)
+        {
+            if (gameId == GameIds.Puzzle && theme.IconPuzzle == null)
+                theme.IconPuzzle = sprite;
+            else if (gameId == GameIds.Imagier && theme.IconImagier == null)
+                theme.IconImagier = sprite;
+            else if (gameId == GameIds.Tracing && theme.IconTrace == null)
+                theme.IconTrace = sprite;
+        }
+
+        static void RetireChildren(RectTransform parent)
+        {
+            if (parent == null)
+                return;
+            for (int i = parent.childCount - 1; i >= 0; i--)
+            {
+                var child = parent.GetChild(i).gameObject;
+                child.SetActive(false);
+                child.transform.SetParent(null, false);
+                if (Application.isPlaying)
+                    UnityEngine.Object.Destroy(child);
+                else
+                    UnityEngine.Object.DestroyImmediate(child);
+            }
+        }
+
+        static void BuildShadow(RectTransform root, Sprite shadow)
+        {
+            if (shadow == null)
+                return;
+            var shadowImage = UiFactory.Picture("Ombre", root, shadow, MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.33f), false, false);
+            UiFactory.Stretch(shadowImage.rectTransform, -12f, -30f, -12f, 8f);
+            shadowImage.preserveAspect = false;
+            shadowImage.raycastTarget = false;
+        }
+
+        static Image BuildFace(RectTransform root, Sprite panel)
+        {
+            var face = UiFactory.Picture("Face", root, panel, Color.white, panel != null, true);
+            UiFactory.Stretch(face.rectTransform, 0f, 0f, 0f, 0f);
+            face.preserveAspect = false;
+            face.raycastTarget = true;
+            return face;
+        }
+
+        static void BuildHalo(Transform parent, Sprite pearl, Color accent)
+        {
+            if (pearl != null)
+            {
+                var halo = UiFactory.Picture("Halo", parent, pearl, accent, false, false);
+                halo.preserveAspect = true;
+                halo.raycastTarget = false;
+                return;
+            }
+            var rect = UiFactory.Rect("Halo", parent);
+            var shape = rect.gameObject.AddComponent<SoftShape>();
+            shape.Configure(TokenShape.Disc, accent);
+            shape.raycastTarget = false;
+        }
+
+        static RectTransform BuildMedallion(Transform parent, Sprite pearl)
+        {
+            if (pearl != null)
+            {
+                var medal = UiFactory.Picture("Medaillon", parent, pearl, MontessoriPalette.Cream, false, false);
+                medal.preserveAspect = true;
+                medal.raycastTarget = false;
+                return medal.rectTransform;
+            }
+            var rect = UiFactory.Rect("Medaillon", parent);
+            var shape = rect.gameObject.AddComponent<SoftShape>();
+            shape.Configure(TokenShape.Disc, MontessoriPalette.Cream);
+            shape.raycastTarget = false;
+            return rect;
+        }
+
+        static RectTransform BuildBadge(Transform parent, Sprite icon, Sprite pearl)
+        {
+            if (icon != null)
+            {
+                var badge = UiFactory.Picture("Medaillon", parent, icon, Color.white, false, false);
+                badge.preserveAspect = true;
+                badge.raycastTarget = false;
+                return badge.rectTransform;
+            }
+            return BuildMedallion(parent, pearl);
+        }
+
+        static void BuildAlphabetMark(RectTransform medal)
+        {
+            if (medal == null)
+                return;
+            var a = UiFactory.Label("Glyphe", medal, "A", 78, MontessoriPalette.VowelBlue, TextAnchor.MiddleCenter);
+            a.rectTransform.anchorMin = new Vector2(0.04f, 0.14f);
+            a.rectTransform.anchorMax = new Vector2(0.50f, 0.86f);
+            a.rectTransform.offsetMin = Vector2.zero;
+            a.rectTransform.offsetMax = Vector2.zero;
+            StyleLetter(a);
+            var m = UiFactory.Label("Glyphe", medal, "M", 78, MontessoriPalette.ConsonantRose, TextAnchor.MiddleCenter);
+            m.rectTransform.anchorMin = new Vector2(0.46f, 0.14f);
+            m.rectTransform.anchorMax = new Vector2(0.96f, 0.86f);
+            m.rectTransform.offsetMin = Vector2.zero;
+            m.rectTransform.offsetMax = Vector2.zero;
+            StyleLetter(m);
+        }
+
+        static void StyleLetter(Text letter)
+        {
+            letter.font = ReadableFont();
+            letter.fontStyle = FontStyle.Bold;
+            letter.alignByGeometry = false;
+            letter.resizeTextForBestFit = true;
+            letter.resizeTextMinSize = 28;
+            letter.resizeTextMaxSize = 96;
+            letter.horizontalOverflow = HorizontalWrapMode.Wrap;
+            letter.verticalOverflow = VerticalWrapMode.Truncate;
+            letter.raycastTarget = false;
+            var shadow = letter.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = MontessoriPalette.WithAlpha(letter.color, 0.18f);
+            shadow.effectDistance = new Vector2(0f, -2f);
+            shadow.useGraphicAlpha = true;
+        }
+
+        static void BuildRibbon(Transform parent, Sprite pearl, Color accent)
+        {
+            var ribbon = UiFactory.Picture("Ruban", parent, pearl, accent, false, false);
+            ribbon.preserveAspect = false;
+            ribbon.raycastTarget = false;
+        }
+
+        static Text BuildTitle(Transform parent, string value, int size)
+        {
+            var title = UiFactory.Label("Etiquette", parent, value, size, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
+            title.font = ReadableFont();
+            title.fontStyle = FontStyle.Bold;
+            title.alignByGeometry = false;
+            title.resizeTextForBestFit = true;
+            title.resizeTextMinSize = 20;
+            title.resizeTextMaxSize = size;
+            title.horizontalOverflow = HorizontalWrapMode.Wrap;
+            title.verticalOverflow = VerticalWrapMode.Truncate;
+            title.raycastTarget = false;
+            return title;
+        }
+
+        static Text BuildCaption(Transform parent, string name, string value, int size, Color color)
+        {
+            var caption = UiFactory.Label(name, parent, value, size, color, TextAnchor.MiddleCenter);
+            caption.font = ReadableFont();
+            caption.alignByGeometry = false;
+            caption.resizeTextForBestFit = true;
+            caption.resizeTextMinSize = 15;
+            caption.resizeTextMaxSize = size;
+            caption.horizontalOverflow = HorizontalWrapMode.Wrap;
+            caption.verticalOverflow = VerticalWrapMode.Truncate;
+            caption.raycastTarget = false;
+            return caption;
+        }
+
+        static void ParkUntilLaidOut(List<CategoryCard> cards)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] != null && cards[i].Root != null)
+                    cards[i].Root.localScale = Vector3.zero;
+            }
+        }
+
+        static void ParkUntilLaidOut(List<GameCard> cards)
+        {
+            for (int i = 0; i < cards.Count; i++)
+            {
+                if (cards[i] != null && cards[i].Root != null)
+                    cards[i].Root.localScale = Vector3.zero;
             }
         }
 
@@ -528,6 +848,102 @@ namespace Sensori.Montessori
         {
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             return font != null ? font : UiFont.Builtin;
+        }
+    }
+
+    public sealed class ShelfTile : MonoBehaviour
+    {
+        void OnEnable()
+        {
+            Apply();
+        }
+
+        void OnRectTransformDimensionsChange()
+        {
+            Apply();
+        }
+
+        public void Apply()
+        {
+            var root = (RectTransform)transform;
+            float w = root.rect.width;
+            float h = root.rect.height;
+            if (w < 24f || h < 24f)
+                return;
+
+            float medal = Mathf.Min(w * 0.54f, h * 0.42f);
+            float medalY = h * 0.14f;
+            var medalRect = FindRect("Medaillon");
+            Place(FindRect("Halo"), new Vector2(0f, medalY), new Vector2(medal * 1.18f, medal * 1.18f));
+            Place(medalRect, new Vector2(0f, medalY), new Vector2(medal, medal));
+
+            var title = FindRect("Etiquette");
+            if (title == null)
+                title = FindRect("Titre");
+            float titleH = Mathf.Clamp(h * 0.13f, 40f, 60f);
+            float titleY = -h * 0.18f;
+            float medalBottom = medalY - medal * 0.5f;
+            float titleTop = titleY + titleH * 0.5f;
+            if (titleTop > medalBottom - 14f)
+                titleY -= titleTop - (medalBottom - 14f);
+            Place(title, new Vector2(0f, titleY), new Vector2(w * 0.9f, titleH));
+
+            var ribbon = FindRect("Ruban");
+            titleTop = titleY + titleH * 0.5f;
+            if (ribbon != null)
+            {
+                float room = medalBottom - titleTop;
+                if (room > 16f)
+                {
+                    ribbon.gameObject.SetActive(true);
+                    float ribbonY = medalBottom - room * 0.45f;
+                    Place(ribbon, new Vector2(0f, ribbonY), new Vector2(Mathf.Clamp(w * 0.28f, 42f, 96f), 12f));
+                }
+                else
+                    ribbon.gameObject.SetActive(false);
+            }
+
+            var description = FindRect("Description");
+            var count = FindRect("Compte");
+            float floor = -h * 0.5f + 16f;
+            if (description != null)
+            {
+                float descH = Mathf.Clamp(h * 0.16f, 44f, 78f);
+                float descY = titleY - titleH * 0.5f - 10f - descH * 0.5f;
+                if (descY - descH * 0.5f < floor)
+                    descY = floor + descH * 0.5f;
+                Place(description, new Vector2(0f, descY), new Vector2(w * 0.84f, descH));
+            }
+            else if (count != null)
+            {
+                float countH = Mathf.Clamp(h * 0.09f, 26f, 38f);
+                float countY = titleY - titleH * 0.5f - h * 0.03f - countH * 0.5f;
+                if (countY - countH * 0.5f < floor)
+                    countY = floor + countH * 0.5f;
+                Place(count, new Vector2(0f, countY), new Vector2(w * 0.84f, countH));
+            }
+        }
+
+        RectTransform FindRect(string childName)
+        {
+            var transforms = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                if (transforms[i] != transform && transforms[i].name == childName)
+                    return transforms[i] as RectTransform;
+            }
+            return null;
+        }
+
+        static void Place(RectTransform rect, Vector2 position, Vector2 size)
+        {
+            if (rect == null)
+                return;
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
         }
     }
 }

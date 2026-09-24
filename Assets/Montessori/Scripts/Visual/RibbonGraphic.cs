@@ -49,9 +49,9 @@ namespace Sensori.Montessori
             if (_paths.Count == 0)
                 return;
             Color edge = _core;
-            edge.a = 0f;
+            edge.a = Mathf.Clamp01(_core.a * 0.28f);
             float half = _width * 0.5f;
-            float glow = half * 1.85f;
+            float glow = half * 1.65f;
             for (int p = 0; p < _paths.Count; p++)
                 AppendPath(vh, _paths[p], half, glow, _core, edge);
         }
