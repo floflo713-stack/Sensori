@@ -140,6 +140,7 @@ namespace Sensori.Montessori
 
         public override void Begin(GameRequest request)
         {
+            ScreenBackdrop.Ensure(transform, "trace");
             _request = request;
             if (_title != null)
             {
@@ -193,6 +194,8 @@ namespace Sensori.Montessori
             Camera cam = EventCamera();
             if (pointer.press.wasPressedThisFrame)
             {
+                if (_wiping)
+                    return;
                 if (HitButton("Effacer", _clear, screen))
                 {
                     ClearInk();
@@ -201,6 +204,11 @@ namespace Sensori.Montessori
                 if (HitButton("Geste", _watch, screen))
                 {
                     PlayHint();
+                    return;
+                }
+                if (HitEraser(screen))
+                {
+                    Wipe();
                     return;
                 }
                 var back = transform.Find("Entete/Retour") as RectTransform;
@@ -221,29 +229,43 @@ namespace Sensori.Montessori
             }
         }
 
+        bool _offLane;
+
         void BeginStroke(Vector2 screen, Camera cam)
         {
             if (_drawing)
                 return;
+            if (!TryNormScreen(screen, cam, out var point) || !InsideLane(point, out point))
+                return;
             StopHint();
             _drawing = true;
+            _offLane = false;
             _pointer = 0;
             _idle = 0f;
             var gesture = new List<Vector2>(64);
+            gesture.Add(point);
             _gestures.Add(gesture);
-            if (TryNormScreen(screen, cam, out var point))
-            {
-                gesture.Add(point);
-                PaintInk();
-            }
+            PaintInk();
         }
 
         void ExtendStroke(Vector2 screen, Camera cam)
         {
             if (_gestures.Count == 0)
                 return;
-            if (!TryNormScreen(screen, cam, out var point))
+            if (!TryNormScreen(screen, cam, out var point) || !InsideLane(point, out point))
+            {
+                _offLane = true;
                 return;
+            }
+            if (_offLane)
+            {
+                _offLane = false;
+                var fresh = new List<Vector2>(32);
+                fresh.Add(point);
+                _gestures.Add(fresh);
+                PaintInk();
+                return;
+            }
             var gesture = _gestures[_gestures.Count - 1];
             if (gesture.Count > 0 && (gesture[gesture.Count - 1] - point).sqrMagnitude < 0.00008f)
                 return;
@@ -255,8 +277,13 @@ namespace Sensori.Montessori
 
         public void PointerDown(PointerEventData eventData)
         {
-            if (_success || _advancing || _drawing || eventData == null || eventData.button != PointerEventData.InputButton.Left)
+            if (_wiping || _success || _advancing || _drawing || eventData == null || eventData.button != PointerEventData.InputButton.Left)
                 return;
+            if (HitEraser(eventData.position))
+            {
+                Wipe();
+                return;
+            }
             BeginStroke(eventData.position, eventData.pressEventCamera);
         }
 
@@ -303,8 +330,6 @@ namespace Sensori.Montessori
             }
             if (_instruction != null)
                 _instruction.text = "Suis le chemin avec le doigt.";
-            if (_boardFace != null && item != null)
-                _boardFace.color = Color.white;
             DressBoard();
             BuildGuide(item);
             Color ink = item != null ? item.SymbolColor : MontessoriPalette.ConsonantRose;
@@ -357,10 +382,69 @@ namespace Sensori.Montessori
             return screen.x >= minX && screen.x <= maxX && screen.y >= minY && screen.y <= maxY;
         }
 
+        static readonly Color Slate = new Color(0.12f, 0.38f, 0.30f, 1f);
+        static readonly Color SlateFrame = new Color(0.90f, 0.78f, 0.60f, 1f);
+        static Sprite _flat;
+
+        static Sprite FlatSprite()
+        {
+            if (_flat != null)
+                return _flat;
+            var texture = WoodTextures.CreateSolid(8);
+            _flat = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+            _flat.name = "ardoise";
+            return _flat;
+        }
+
         void DressBoard()
         {
             if (_board != null)
-                UiFactory.AnchorCenter(_board, new Vector2(0f, 36f), new Vector2(680f, 680f));
+                UiFactory.AnchorCenter(_board, new Vector2(0f, 36f), new Vector2(720f, 640f));
+            if (_boardFace != null)
+            {
+                _boardFace.color = SlateFrame;
+                _boardFace.raycastTarget = true;
+            }
+            var slate = _board != null ? _board.Find("Ardoise") as RectTransform : null;
+            Image slateImage;
+            if (slate == null && _board != null)
+            {
+                slateImage = UiFactory.Picture("Ardoise", _board, FlatSprite(), Slate, false, false);
+                UiFactory.Stretch(slateImage.rectTransform, 46f, 78f, 46f, 46f);
+                slateImage.preserveAspect = false;
+                slate = slateImage.rectTransform;
+            }
+            else
+                slateImage = slate != null ? slate.GetComponent<Image>() : null;
+            if (slateImage != null)
+            {
+                slateImage.sprite = FlatSprite();
+                slateImage.color = Slate;
+                slateImage.raycastTarget = false;
+                int frame = _boardFace != null ? _boardFace.transform.GetSiblingIndex() : 0;
+                slate.SetSiblingIndex(frame + 1);
+            }
+            if (slate != null)
+                UiFactory.Stretch(slate, 52f, 108f, 52f, 64f);
+            if (slateImage != null)
+                slateImage.preserveAspect = false;
+            BuildChalkboard(slate);
+            FitChalkArea();
+            if (_symbol != null)
+            {
+                _symbol.fontSize = 32;
+                _symbol.fontStyle = FontStyle.Bold;
+                _symbol.color = new Color(0.95f, 0.96f, 0.91f, 1f);
+                _symbol.alignment = TextAnchor.MiddleLeft;
+                _symbol.horizontalOverflow = HorizontalWrapMode.Overflow;
+                _symbol.verticalOverflow = VerticalWrapMode.Overflow;
+                var label = _symbol.rectTransform;
+                label.anchorMin = new Vector2(0f, 1f);
+                label.anchorMax = new Vector2(1f, 1f);
+                label.pivot = new Vector2(0f, 1f);
+                label.offsetMin = new Vector2(68f, -108f);
+                label.offsetMax = new Vector2(-70f, -62f);
+            }
             if (_instruction == null)
                 return;
             var line = _instruction.rectTransform;
@@ -369,6 +453,196 @@ namespace Sensori.Montessori
             line.pivot = new Vector2(0.5f, 0f);
             line.sizeDelta = new Vector2(-120f, 46f);
             line.anchoredPosition = new Vector2(0f, 168f);
+        }
+
+        void FitChalkArea()
+        {
+            FitNamed("Guide");
+            FitNamed("Encre");
+            FitNamed("Trait");
+        }
+
+        void FitNamed(string childName)
+        {
+            if (_board == null)
+                return;
+            var rect = _board.Find(childName) as RectTransform;
+            if (rect != null)
+                UiFactory.Stretch(rect, 68f, 124f, 68f, 112f);
+        }
+
+        void BuildChalkboard(RectTransform slate)
+        {
+            if (_board == null)
+                return;
+            var stale = FindNamed("Rebord");
+            if (stale != null)
+                stale.gameObject.SetActive(false);
+            var lip = Flat("Lèvre", new Color(0.28f, 0.16f, 0.09f, 1f));
+            UiFactory.Stretch(lip.rectTransform, 28f, 28f, 28f, 28f);
+            if (slate != null)
+                lip.transform.SetSiblingIndex(slate.GetSiblingIndex());
+
+            var shelf = Flat("Tablette", new Color(0.55f, 0.36f, 0.20f, 1f));
+            PinBottom(shelf.rectTransform, 22f, 36f, 58f);
+            var shelfTop = Flat("TabletteClaire", new Color(0.78f, 0.58f, 0.36f, 1f));
+            PinBottom(shelfTop.rectTransform, 50f, 10f, 58f);
+
+            var eraser = Flat("Eponge", new Color(0.86f, 0.74f, 0.52f, 1f));
+            PinBottomSize(eraser.rectTransform, 168f, 52f, 130f, 26f);
+            var felt = Flat("Feutre", new Color(0.16f, 0.24f, 0.20f, 1f));
+            felt.transform.SetParent(eraser.transform, false);
+            UiFactory.Stretch(felt.rectTransform, 7f, 8f, 7f, 8f);
+            var feltShine = Flat("FeutreClair", new Color(0.45f, 0.58f, 0.50f, 1f));
+            feltShine.transform.SetParent(felt.transform, false);
+            feltShine.rectTransform.anchorMin = new Vector2(0f, 1f);
+            feltShine.rectTransform.anchorMax = new Vector2(1f, 1f);
+            feltShine.rectTransform.pivot = new Vector2(0.5f, 1f);
+            feltShine.rectTransform.sizeDelta = new Vector2(-16f, 10f);
+            feltShine.rectTransform.anchoredPosition = new Vector2(0f, -6f);
+
+            var chalk = Flat("Craie", new Color(0.96f, 0.96f, 0.93f, 1f));
+            PinBottomSize(chalk.rectTransform, 78f, 16f, -150f, 40f);
+            var chalkTip = Flat("CraieBout", new Color(0.82f, 0.84f, 0.80f, 1f));
+            chalkTip.transform.SetParent(chalk.transform, false);
+            chalkTip.rectTransform.anchorMin = new Vector2(1f, 0f);
+            chalkTip.rectTransform.anchorMax = new Vector2(1f, 1f);
+            chalkTip.rectTransform.pivot = new Vector2(1f, 0.5f);
+            chalkTip.rectTransform.sizeDelta = new Vector2(14f, 0f);
+            chalkTip.rectTransform.anchoredPosition = Vector2.zero;
+
+            if (slate != null)
+            {
+                shelf.transform.SetSiblingIndex(slate.GetSiblingIndex() + 1);
+                shelfTop.transform.SetSiblingIndex(shelf.transform.GetSiblingIndex() + 1);
+                eraser.transform.SetSiblingIndex(shelfTop.transform.GetSiblingIndex() + 1);
+                chalk.transform.SetSiblingIndex(eraser.transform.GetSiblingIndex() + 1);
+            }
+            _eraser = eraser.rectTransform;
+            _eraserRest = _eraser.anchoredPosition;
+            eraser.raycastTarget = true;
+        }
+
+        bool _wiping;
+        RectTransform _eraser;
+        Vector2 _eraserRest;
+
+        bool HitEraser(Vector2 screen)
+        {
+            return _eraser != null && Hit(_eraser, screen, 16f);
+        }
+
+        void Wipe()
+        {
+            if (_wiping || _eraser == null || _success)
+                return;
+            _wiping = true;
+            _drawing = false;
+            _pointer = -1;
+            StopHint();
+            ClearInk();
+            Motion.Kill(_eraser, "pos");
+            var high = _eraserRest + new Vector2(-220f, 250f);
+            var far = _eraserRest + new Vector2(220f, 250f);
+            Motion.Anchored(_eraser, high, 0.22f, Ease.OutQuad).OnComplete(() =>
+            {
+                Motion.Anchored(_eraser, far, 0.38f, Ease.InOutQuad).OnComplete(() =>
+                {
+                    Motion.Anchored(_eraser, _eraserRest, 0.24f, Ease.OutQuad).OnComplete(() => _wiping = false);
+                });
+            });
+        }
+
+        Image Flat(string name, Color color)
+        {
+            var found = FindNamed(name);
+            Image image = found != null ? found.GetComponent<Image>() : null;
+            if (image == null)
+                image = UiFactory.Picture(name, _board, FlatSprite(), color, false, false);
+            image.sprite = FlatSprite();
+            image.color = color;
+            image.type = Image.Type.Simple;
+            image.preserveAspect = false;
+            image.raycastTarget = false;
+            return image;
+        }
+
+        Transform FindNamed(string name)
+        {
+            if (_board == null)
+                return null;
+            var all = _board.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (all[i].name == name)
+                    return all[i];
+            }
+            return null;
+        }
+
+        static void PinBottom(RectTransform rect, float y, float height, float inset)
+        {
+            rect.anchorMin = new Vector2(0f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.offsetMin = new Vector2(inset, y);
+            rect.offsetMax = new Vector2(-inset, y + height);
+        }
+
+        static void PinBottomSize(RectTransform rect, float width, float height, float x, float y)
+        {
+            rect.anchorMin = new Vector2(0.5f, 0f);
+            rect.anchorMax = new Vector2(0.5f, 0f);
+            rect.pivot = new Vector2(0.5f, 0f);
+            rect.sizeDelta = new Vector2(width, height);
+            rect.anchoredPosition = new Vector2(x, y);
+        }
+
+        void EnsureTray()
+        {
+        }
+
+        bool InsideLane(Vector2 point, out Vector2 anchored)
+        {
+            anchored = point;
+            float limit = LaneLimit();
+            float best = limit * limit;
+            bool hit = false;
+            Vector2 nearest = point;
+            for (int s = 0; s < _guideStrokes.Count; s++)
+            {
+                var path = _guideStrokes[s];
+                for (int i = 1; i < path.Count; i++)
+                {
+                    Vector2 on = Closest(path[i - 1], path[i], point);
+                    float dist = (on - point).sqrMagnitude;
+                    if (dist > best)
+                        continue;
+                    best = dist;
+                    nearest = on;
+                    hit = true;
+                }
+            }
+            if (!hit)
+                return false;
+            anchored = Vector2.Lerp(point, nearest, 0.4f);
+            return true;
+        }
+
+        float LaneLimit()
+        {
+            float half = Mathf.Max(96f, BoardWidth() * 0.16f) * 0.5f;
+            return half / Mathf.Max(1f, BoardWidth());
+        }
+
+        static Vector2 Closest(Vector2 a, Vector2 b, Vector2 point)
+        {
+            Vector2 ab = b - a;
+            float denom = ab.sqrMagnitude;
+            if (denom < 0.0000001f)
+                return a;
+            float t = Mathf.Clamp01(Vector2.Dot(point - a, ab) / denom);
+            return a + ab * t;
         }
 
         void HideGhost()
@@ -426,7 +700,7 @@ namespace Sensori.Montessori
                 if (!on)
                     continue;
                 _marks[i].color = ink;
-                UiFactory.AnchorCenter(_marks[i].rectTransform, NormToLocal(_shown[i]), new Vector2(30f, 30f));
+                UiFactory.AnchorCenter(_marks[i].rectTransform, NormToLocal(_shown[i]), new Vector2(54f, 54f));
             }
         }
 
@@ -453,21 +727,10 @@ namespace Sensori.Montessori
         {
             _guideStrokes.Clear();
             _flatGuide.Clear();
-            StrokePath[] strokes = item != null ? item.Strokes : null;
-            bool missing = strokes == null || strokes.Length == 0;
-            if (!missing)
-            {
-                missing = true;
-                for (int i = 0; i < strokes.Length; i++)
-                {
-                    if (strokes[i] != null && strokes[i].Points != null && strokes[i].Points.Length >= 2)
-                    {
-                        missing = false;
-                        break;
-                    }
-                }
-            }
-            if (missing)
+            StrokePath[] strokes = item != null && !string.IsNullOrEmpty(item.ItemId)
+                ? StrokeLibrary.For(item.ItemId)
+                : null;
+            if (strokes == null || strokes.Length == 0)
                 strokes = StrokeLibrary.For("shape-circle");
 
             for (int i = 0; i < strokes.Length; i++)
@@ -476,9 +739,10 @@ namespace Sensori.Montessori
                 if (stroke == null || stroke.Points == null || stroke.Points.Length < 2)
                     continue;
                 _smooth.Clear();
-                PolylineMath.Smooth(stroke.Points, _smooth, 4);
+                for (int p = 0; p < stroke.Points.Length; p++)
+                    _smooth.Add(stroke.Points[p]);
                 var sampled = new List<Vector2>();
-                PolylineMath.Resample(_smooth, 0.02f, sampled);
+                PolylineMath.Resample(_smooth, 0.012f, sampled);
                 if (sampled.Count < 2)
                     continue;
                 _guideStrokes.Add(sampled);
@@ -495,10 +759,28 @@ namespace Sensori.Montessori
             _mesh.Clear();
             for (int i = 0; i < _guideStrokes.Count; i++)
                 _mesh.Add(ToLocal(_guideStrokes[i]));
-            Color chalk = Color.Lerp(new Color(1f, 0.98f, 0.94f, 1f), ink, 0.28f);
-            chalk.a = 1f;
-            float width = Mathf.Max(34f, BoardWidth() * 0.055f);
-            _guide.SetPaths(_mesh, width, chalk);
+            var lane = new Color(0.93f, 0.96f, 0.91f, 0.55f);
+            float width = Mathf.Max(96f, BoardWidth() * 0.16f);
+            _guide.SetPaths(_mesh, width, lane);
+            var spine = EnsureSpine();
+            if (spine == null)
+                return;
+            EnsureDrawn(spine);
+            var chalk = Color.Lerp(new Color(0.97f, 0.98f, 0.94f, 1f), ink, 0.35f);
+            chalk.a = 0.92f;
+            spine.SetPaths(_mesh, Mathf.Max(18f, width * 0.2f), chalk);
+        }
+
+        RibbonGraphic EnsureSpine()
+        {
+            if (_guide == null)
+                return null;
+            var found = _guide.transform.Find("Milieu");
+            if (found != null)
+                return found.GetComponent<RibbonGraphic>();
+            var spineGo = UiFactory.Rect("Milieu", _guide.transform);
+            UiFactory.Stretch(spineGo, 0f, 0f, 0f, 0f);
+            return spineGo.gameObject.AddComponent<RibbonGraphic>();
         }
 
         void RenderInk(Color color)
@@ -530,17 +812,6 @@ namespace Sensori.Montessori
                 var path = _guideStrokes[s];
                 if (path.Count == 0)
                     continue;
-                float walked = 1f;
-                for (int i = 0; i < path.Count; i++)
-                {
-                    if (i > 0)
-                        walked += Vector2.Distance(path[i - 1], path[i]);
-                    if (i > 0 && walked < 0.03f)
-                        continue;
-                    walked = 0f;
-                    var bead = UiFactory.Picture("Perle", _dots, _pearl, chalk, false, false);
-                    UiFactory.AnchorCenter(bead.rectTransform, NormToLocal(path[i]), new Vector2(22f, 22f));
-                }
                 Vector2 at = NormToLocal(path[0]);
                 var halo = UiFactory.Picture("Depart", _dots, _pearl, chalk, false, false);
                 UiFactory.AnchorCenter(halo.rectTransform, at, new Vector2(40f, 40f));
@@ -609,10 +880,10 @@ namespace Sensori.Montessori
                 return;
             for (int i = 0; i < _guideStrokes.Count; i++)
             {
-                if (PolylineMath.Recall(_guideStrokes[i], _flatUser, 0.055f) < 0.84f)
+                if (PolylineMath.Recall(_guideStrokes[i], _flatUser, 0.11f) < 0.78f)
                     return;
             }
-            if (PolylineMath.Precision(_flatGuide, _flatUser, 0.065f) < 0.62f)
+            if (PolylineMath.Precision(_flatGuide, _flatUser, 0.12f) < 0.5f)
                 return;
             Succeed();
         }

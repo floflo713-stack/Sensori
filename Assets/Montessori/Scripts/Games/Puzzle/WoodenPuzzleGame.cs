@@ -70,6 +70,7 @@ namespace Sensori.Montessori
 
         public override void Begin(GameRequest request)
         {
+            ScreenBackdrop.Ensure(transform, "puzzle");
             _request = request;
             if (_title != null)
             {

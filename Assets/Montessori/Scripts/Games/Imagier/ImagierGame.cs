@@ -104,6 +104,7 @@ namespace Sensori.Montessori
 
         public override void Begin(GameRequest request)
         {
+            ScreenBackdrop.Ensure(transform, "imagier");
             _request = request;
             _index = 0;
             _showingBack = false;

@@ -71,6 +71,7 @@ namespace Sensori.Montessori
             Canvas.ForceUpdateCanvases();
             _choicesIntroPending = false;
             LayoutChoices();
+            ScreenBackdrop.Ensure(transform, "categories");
         }
 
         public void ShowChoices()
@@ -101,6 +102,7 @@ namespace Sensori.Montessori
             Canvas.ForceUpdateCanvases();
             if (!LayoutChoices())
                 ParkUntilLaidOut(_choiceCards);
+            ScreenBackdrop.Ensure(transform, "categories");
         }
 
         public void Show(LearningCategory category)
@@ -137,6 +139,7 @@ namespace Sensori.Montessori
             Canvas.ForceUpdateCanvases();
             if (!Layout())
                 ParkUntilLaidOut(_cards);
+            ScreenBackdrop.Ensure(transform, "categories");
         }
 
         void BuildHeader(ThemeAssets theme)

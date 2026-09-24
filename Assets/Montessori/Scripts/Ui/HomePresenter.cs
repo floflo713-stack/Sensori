@@ -63,6 +63,7 @@ namespace Sensori.Montessori
 
             BuildTokens(theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null);
             SealWelcome();
+            EnsureLandscape();
 
             if (catalog == null)
                 Debug.LogWarning("[Montessori] Catalogue absent pendant la construction de l'accueil.");
@@ -188,6 +189,32 @@ namespace Sensori.Montessori
             }
             BuildTokens(PlateSprite(), ShadowSprite());
             SealWelcome();
+            EnsureLandscape();
+        }
+
+        void EnsureLandscape()
+        {
+            if (!Application.isPlaying)
+                return;
+            var found = transform.Find("Paysage");
+            Image image;
+            if (found == null)
+            {
+                image = UiFactory.Picture("Paysage", transform, HomeLandscape.Sprite, Color.white, false, false);
+                UiFactory.Stretch(image.rectTransform, 0f, 0f, 0f, 0f);
+            }
+            else
+            {
+                image = found.GetComponent<Image>();
+                if (image == null)
+                    image = found.gameObject.AddComponent<Image>();
+                image.sprite = HomeLandscape.Sprite;
+                image.color = Color.white;
+                image.type = Image.Type.Simple;
+            }
+            image.preserveAspect = false;
+            image.raycastTarget = false;
+            image.transform.SetAsFirstSibling();
         }
 
         public void BeginDeparture(Action continueWith)
