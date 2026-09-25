@@ -196,27 +196,7 @@ namespace Sensori.Montessori
 
         void EnsureLandscape()
         {
-            if (!Application.isPlaying)
-                return;
-            var found = transform.Find("Paysage");
-            Image image;
-            if (found == null)
-            {
-                image = UiFactory.Picture("Paysage", transform, HomeLandscape.Sprite, Color.white, false, false);
-                UiFactory.Stretch(image.rectTransform, 0f, 0f, 0f, 0f);
-            }
-            else
-            {
-                image = found.GetComponent<Image>();
-                if (image == null)
-                    image = found.gameObject.AddComponent<Image>();
-                image.sprite = HomeLandscape.Sprite;
-                image.color = Color.white;
-                image.type = Image.Type.Simple;
-            }
-            image.preserveAspect = false;
-            image.raycastTarget = false;
-            image.transform.SetAsFirstSibling();
+            ScreenBackdrop.Ensure(transform, "accueil");
         }
 
         public void BeginDeparture(Action continueWith)
