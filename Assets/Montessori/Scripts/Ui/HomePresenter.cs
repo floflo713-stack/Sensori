@@ -7,11 +7,21 @@ namespace Sensori.Montessori
     public sealed class HomePresenter : MonoBehaviour
     {
         public static readonly Color WarmShadow = new Color(0.52f, 0.30f, 0.12f, 0.32f);
-        public static readonly Color InstructionInk = new Color(0.42f, 0.26f, 0.14f, 1f);
+        public static readonly Color PlateCream = new Color(1f, 0.9764706f, 0.9019608f, 1f);
+        public static readonly Color InkCoral = new Color(1f, 0.29411766f, 0.29411766f, 1f);
+        public static readonly Color InkAzure = new Color(0.1764706f, 0.6117647f, 0.85882354f, 1f);
+        public static readonly Color InkMustard = new Color(0.9490196f, 0.7882353f, 0.29803923f, 1f);
+        public static readonly Color InkApple = new Color(0.15294118f, 0.68235296f, 0.3764706f, 1f);
+        public static readonly Color SoftDrop = new Color(0f, 0f, 0f, 0.28f);
 
-        const string Instruction = "Touche la plaque pour commencer";
+        const float PlateWidth = 880f;
+        const float PlateHeight = 360f;
+        const float LetterLift = 52f;
 
         [SerializeField] Button _button;
+        Sprite _keptPanel;
+        Sprite _keptShadow;
+        static Sprite _softRounded;
 
         public Button SensoriButton
         {
@@ -34,34 +44,34 @@ namespace Sensori.Montessori
             var sign = UiFactory.Rect("Enseigne", transform);
             Center(sign, new Vector2(0f, 36f), new Vector2(980f, 420f));
 
-            var shadow = UiFactory.Picture("Ombre", sign, theme.Shadow, WarmShadow, false, false);
-            UiFactory.AnchorCenter(shadow.rectTransform, new Vector2(0f, -48f), new Vector2(1100f, 390f));
-            shadow.preserveAspect = false;
-            shadow.raycastTarget = false;
+            if (theme != null)
+            {
+                if (_keptPanel == null)
+                    _keptPanel = theme.Panel;
+                if (_keptShadow == null)
+                    _keptShadow = theme.Shadow;
+            }
 
-            var plate = UiFactory.Picture("Sensori", sign, theme.Panel, Color.white, true, true);
-            UiFactory.AnchorCenter(plate.rectTransform, Vector2.zero, new Vector2(840f, 250f));
+            var plate = UiFactory.Picture("Sensori", sign, SoftRounded(), PlateCream, true, true);
+            UiFactory.AnchorCenter(plate.rectTransform, Vector2.zero, new Vector2(PlateWidth, PlateHeight));
             plate.preserveAspect = false;
             plate.raycastTarget = true;
+            ApplyDropShadow(plate, -8f);
             _button = UiFactory.CreateButton(plate.gameObject);
             plate.gameObject.AddComponent<HomePlateMotion>();
 
-            var title = UiFactory.Label("Titre", plate.transform, "Sensori", 84, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
+            var title = UiFactory.Label("Titre", plate.transform, "Sensori", 84, InkCoral, TextAnchor.MiddleCenter);
             UiFactory.Stretch(title.rectTransform, 28f, 28f, 28f, 28f);
             title.font = ReadableFont();
             title.raycastTarget = false;
             var titleShadow = title.gameObject.AddComponent<Shadow>();
-            titleShadow.effectColor = MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.18f);
+            titleShadow.effectColor = SoftDrop;
             titleShadow.effectDistance = new Vector2(0f, -3f);
             titleShadow.useGraphicAlpha = true;
             EnsureTitleLetters();
+            EnsureJouer(plate.transform);
 
-            var footer = UiFactory.Label("Legende", transform, Instruction, 28, InstructionInk, TextAnchor.MiddleCenter);
-            UiFactory.AnchorBottom(footer.rectTransform, 88f, 40f, 40f);
-            footer.font = ReadableFont();
-            footer.raycastTarget = false;
-
-            BuildTokens(theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null);
+            BuildTokens();
             SealWelcome();
             EnsureMark();
             EnsureLandscape();
@@ -147,6 +157,7 @@ namespace Sensori.Montessori
 
         public void PresentAsWelcome()
         {
+            KeepThemeSprites();
             var sign = transform.Find("Enseigne") as RectTransform;
             if (sign != null)
                 Center(sign, new Vector2(0f, 36f), new Vector2(980f, 420f));
@@ -162,20 +173,24 @@ namespace Sensori.Montessori
             if (plate != null)
             {
                 plate.name = "Sensori";
-                UiFactory.AnchorCenter(plate, Vector2.zero, new Vector2(840f, 250f));
+                UiFactory.AnchorCenter(plate, Vector2.zero, new Vector2(PlateWidth, PlateHeight));
                 var title = plate.Find("Titre") as RectTransform;
                 if (title != null)
                     UiFactory.Stretch(title, 28f, 28f, 28f, 28f);
                 var face = plate.GetComponent<Image>();
                 if (face != null)
+                {
+                    ApplySoftFace(face, PlateCream, -8f);
                     face.raycastTarget = true;
+                }
                 RetirePressable(plate.gameObject);
                 if (plate.GetComponent<HomePlateMotion>() == null)
                     plate.gameObject.AddComponent<HomePlateMotion>();
+                EnsureJouer(plate);
             }
 
             StyleShadow();
-            StyleLegend();
+            RetireLegend();
             EnsureTitleLetters();
             EnsureMark();
 
@@ -189,7 +204,7 @@ namespace Sensori.Montessori
                 staleTokens.name = "JetonsAnciens";
                 Retire(staleTokens.gameObject);
             }
-            BuildTokens(PlateSprite(), ShadowSprite());
+            BuildTokens();
             SealWelcome();
             EnsureLandscape();
         }
@@ -273,16 +288,109 @@ namespace Sensori.Montessori
 
         public Sprite PlateSprite()
         {
-            var button = SensoriButton;
-            var image = button != null ? button.GetComponent<Image>() : null;
-            return image != null ? image.sprite : null;
+            if (_keptPanel != null)
+                return _keptPanel;
+            KeepThemeSprites();
+            return _keptPanel;
         }
 
         public Sprite ShadowSprite()
         {
-            var shadow = transform.Find("Enseigne/Ombre");
-            var image = shadow != null ? shadow.GetComponent<Image>() : null;
-            return image != null ? image.sprite : null;
+            if (_keptShadow != null)
+                return _keptShadow;
+            KeepThemeSprites();
+            return _keptShadow;
+        }
+
+        void KeepThemeSprites()
+        {
+            if (_keptPanel == null)
+            {
+                var button = SensoriButton;
+                var image = button != null ? button.GetComponent<Image>() : null;
+                if (image != null && image.sprite != null && image.sprite != SoftRounded())
+                    _keptPanel = image.sprite;
+            }
+            if (_keptShadow == null)
+            {
+                var shadow = transform.Find("Enseigne/Ombre");
+                var image = shadow != null ? shadow.GetComponent<Image>() : null;
+                if (image != null && image.sprite != null)
+                    _keptShadow = image.sprite;
+            }
+        }
+
+        static Sprite SoftRounded()
+        {
+            if (_softRounded != null)
+                return _softRounded;
+            _softRounded = UiFactory.RoundedSprite();
+            return _softRounded;
+        }
+
+        static void ApplySoftFace(Image image, Color color, float shadowY)
+        {
+            if (image == null)
+                return;
+            var sprite = SoftRounded();
+            if (sprite != null)
+            {
+                image.sprite = sprite;
+                image.type = Image.Type.Sliced;
+            }
+            image.color = color;
+            image.material = null;
+            image.preserveAspect = false;
+            ApplyDropShadow(image, shadowY);
+        }
+
+        static void ApplyDropShadow(Graphic graphic, float shadowY)
+        {
+            if (graphic == null)
+                return;
+            var shadow = graphic.GetComponent<Shadow>();
+            if (shadow == null || shadow is Outline)
+                shadow = graphic.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = SoftDrop;
+            shadow.effectDistance = new Vector2(0f, shadowY);
+            shadow.useGraphicAlpha = true;
+        }
+
+        void EnsureJouer(Transform plate)
+        {
+            if (plate == null)
+                return;
+            var existing = plate.Find("Jouer");
+            Image face;
+            if (existing == null)
+            {
+                face = UiFactory.Picture("Jouer", plate, SoftRounded(), InkCoral, true, true);
+                var label = UiFactory.Label("Libelle", face.transform, "JOUER", 42, PlateCream, TextAnchor.MiddleCenter);
+                UiFactory.Stretch(label.rectTransform, 12f, 8f, 12f, 8f);
+                label.font = ReadableFont();
+                label.fontStyle = FontStyle.Bold;
+                label.raycastTarget = false;
+            }
+            else
+            {
+                face = existing.GetComponent<Image>();
+                if (face == null)
+                    face = existing.gameObject.AddComponent<Image>();
+                var label = existing.Find("Libelle");
+                var text = label != null ? label.GetComponent<Text>() : null;
+                if (text != null)
+                {
+                    text.text = "JOUER";
+                    text.color = PlateCream;
+                    text.fontStyle = FontStyle.Bold;
+                    text.fontSize = 42;
+                    text.raycastTarget = false;
+                    text.font = ReadableFont();
+                }
+            }
+            UiFactory.AnchorCenter(face.rectTransform, new Vector2(0f, -108f), new Vector2(320f, 84f));
+            ApplySoftFace(face, InkCoral, -6f);
+            face.raycastTarget = true;
         }
 
         static void Center(RectTransform rect, Vector2 position, Vector2 size)
@@ -338,7 +446,7 @@ namespace Sensori.Montessori
                 title.gameObject.AddComponent<WelcomeLetters>();
             if (title.Find("Lettre") != null)
             {
-                TintTitle(title);
+                LayoutTitleLetters(title);
                 return;
             }
 
@@ -359,13 +467,12 @@ namespace Sensori.Montessori
             var font = ReadableFont();
             for (int i = 0; i < word.Length; i++)
             {
-                var label = UiFactory.Label("Lettre", title, word[i].ToString(), 90, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
-                UiFactory.AnchorCenter(label.rectTransform, new Vector2(origin + i * slot, 4f), new Vector2(slot, 148f));
+                var label = UiFactory.Label("Lettre", title, word[i].ToString(), 90, PrimaryInk(i), TextAnchor.MiddleCenter);
+                UiFactory.AnchorCenter(label.rectTransform, new Vector2(origin + i * slot, LetterLift), new Vector2(slot, 148f));
                 label.font = font;
-                label.color = LetterInk(word[i]);
                 label.raycastTarget = false;
                 var letterShadow = label.gameObject.AddComponent<Shadow>();
-                letterShadow.effectColor = MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.16f);
+                letterShadow.effectColor = new Color(0f, 0f, 0f, 0.25f);
                 letterShadow.effectDistance = new Vector2(0f, -2f);
                 letterShadow.useGraphicAlpha = true;
             }
@@ -381,57 +488,75 @@ namespace Sensori.Montessori
 
         static void TintTitle(Transform title)
         {
+            LayoutTitleLetters(title);
+        }
+
+        static void LayoutTitleLetters(Transform title)
+        {
             if (title == null)
                 return;
+            const float slot = 90f;
+            int count = 0;
+            for (int i = 0; i < title.childCount; i++)
+            {
+                if (title.GetChild(i).name == "Lettre")
+                    count++;
+            }
+            float origin = -count * slot * 0.5f + slot * 0.5f;
+            int index = 0;
             for (int i = 0; i < title.childCount; i++)
             {
                 var child = title.GetChild(i);
                 if (child.name != "Lettre")
                     continue;
+                var rect = child as RectTransform;
+                if (rect != null)
+                    UiFactory.AnchorCenter(rect, new Vector2(origin + index * slot, LetterLift), new Vector2(slot, 148f));
                 var label = child.GetComponent<Text>();
-                if (label == null || string.IsNullOrEmpty(label.text))
-                    continue;
-                label.color = LetterInk(label.text[0]);
+                if (label != null && !string.IsNullOrEmpty(label.text))
+                    label.color = PrimaryInk(index);
+                var letterShadow = child.GetComponent<Shadow>();
+                if (letterShadow != null)
+                {
+                    letterShadow.effectColor = new Color(0f, 0f, 0f, 0.25f);
+                    letterShadow.effectDistance = new Vector2(0f, -2f);
+                    letterShadow.useGraphicAlpha = true;
+                }
+                index++;
             }
         }
 
-        static Color LetterInk(char glyph)
+        static Color PrimaryInk(int index)
         {
-            char c = char.ToLowerInvariant(glyph);
-            if (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u' || c == 'y')
-                return GlyphBlue;
-            if (c >= '0' && c <= '9')
-                return GlyphHoney;
-            return GlyphRose;
+            switch (Mathf.Abs(index) % 4)
+            {
+                case 0:
+                    return InkCoral;
+                case 1:
+                    return InkAzure;
+                case 2:
+                    return InkMustard;
+                default:
+                    return InkApple;
+            }
         }
 
         void StyleShadow()
         {
-            var shadow = transform.Find("Enseigne/Ombre") as RectTransform;
+            var shadow = transform.Find("Enseigne/Ombre");
             if (shadow == null)
                 return;
-            UiFactory.AnchorCenter(shadow, new Vector2(0f, -48f), new Vector2(1100f, 390f));
             var image = shadow.GetComponent<Image>();
-            if (image == null)
-                return;
-            image.color = WarmShadow;
-            image.preserveAspect = false;
-            image.raycastTarget = false;
+            if (image != null)
+                image.raycastTarget = false;
+            shadow.gameObject.SetActive(false);
         }
 
-        void StyleLegend()
+        void RetireLegend()
         {
             var legend = transform.Find("Legende");
-            var legendText = legend != null ? legend.GetComponent<Text>() : null;
-            if (legendText == null)
-                return;
-            legendText.text = Instruction;
-            legendText.color = InstructionInk;
-            legendText.fontSize = 28;
-            legendText.raycastTarget = false;
-            var font = ReadableFont();
-            if (font != null)
-                legendText.font = font;
+            if (legend != null)
+                Retire(legend.gameObject);
         }
 
         void StripBrandCaptions()
@@ -443,8 +568,6 @@ namespace Sensori.Montessori
                 if (label == null || string.IsNullOrEmpty(label.text))
                     continue;
                 if (!label.gameObject.activeInHierarchy)
-                    continue;
-                if (label.transform == transform.Find("Legende"))
                     continue;
                 string value = label.text;
                 if (value.IndexOf("Montessori", StringComparison.OrdinalIgnoreCase) >= 0
@@ -567,7 +690,7 @@ namespace Sensori.Montessori
             };
         }
 
-        void BuildTokens(Sprite wood, Sprite shadow)
+        void BuildTokens()
         {
             var root = UiFactory.Rect("Jetons", transform);
             UiFactory.Stretch(root, 0f, 0f, 0f, 0f);
@@ -578,41 +701,32 @@ namespace Sensori.Montessori
 
             var seeds = TokenSeeds();
             for (int i = 0; i < seeds.Length; i++)
-                BuildToken(root, seeds[i], wood, shadow);
+                BuildToken(root, seeds[i], i);
             root.SetAsFirstSibling();
         }
 
-        static void BuildToken(RectTransform parent, TokenSeed seed, Sprite wood, Sprite shadow)
+        static void BuildToken(RectTransform parent, TokenSeed seed, int index)
         {
             var token = UiFactory.Rect("Jeton", parent);
             UiFactory.AnchorCenter(token, seed.Position, new Vector2(seed.Size, seed.Size));
 
-            if (shadow != null)
-            {
-                var shade = UiFactory.Picture("Ombre", token, shadow, WarmShadow, false, false);
-                UiFactory.Stretch(shade.rectTransform, -10f, -22f, -10f, 6f);
-                shade.preserveAspect = false;
-                shade.raycastTarget = false;
-            }
-
-            float washMix = seed.Shape ? 0.82f : 0.46f;
-            var wash = Color.Lerp(new Color(1f, 0.97f, 0.92f, 1f), seed.Wash, washMix);
-            var face = UiFactory.Picture("Jeton", token, wood, wash, wood != null, false);
-            UiFactory.Stretch(face.rectTransform, 0f, 4f, 0f, 0f);
-            face.preserveAspect = false;
+            var face = UiFactory.Picture("Jeton", token, SoftRounded(), PlateCream, true, false);
+            UiFactory.Stretch(face.rectTransform, 0f, 0f, 0f, 0f);
+            ApplySoftFace(face, PlateCream, -6f);
             face.raycastTarget = false;
+            var ink = PrimaryInk(index);
 
             if (seed.Shape)
             {
                 var shapeRect = UiFactory.Rect("Forme", face.transform);
                 UiFactory.Stretch(shapeRect, 16f, 20f, 16f, 14f);
                 var shape = shapeRect.gameObject.AddComponent<SoftShape>();
-                shape.Configure(seed.Form, seed.Ink);
+                shape.Configure(seed.Form, ink);
                 shape.raycastTarget = false;
             }
             else
             {
-                var label = UiFactory.Label("Glyph", face.transform, seed.Glyph, Mathf.RoundToInt(seed.Size * 0.62f), seed.Ink, TextAnchor.MiddleCenter);
+                var label = UiFactory.Label("Glyph", face.transform, seed.Glyph, Mathf.RoundToInt(seed.Size * 0.62f), ink, TextAnchor.MiddleCenter);
                 UiFactory.Stretch(label.rectTransform, 0f, 0f, 0f, 0f);
                 label.font = ReadableFont();
                 label.fontStyle = FontStyle.Bold;

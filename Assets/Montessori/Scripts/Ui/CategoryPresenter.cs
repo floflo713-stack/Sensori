@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -7,8 +8,8 @@ namespace Sensori.Montessori
 {
     public sealed class CategoryPresenter : MonoBehaviour
     {
-        [SerializeField] Text _title;
-        [SerializeField] Text _subtitle;
+        [SerializeField] TMP_Text _title;
+        [SerializeField] TMP_Text _subtitle;
         [SerializeField] RectTransform _area;
         [SerializeField] RectTransform _choices;
         readonly List<GameCard> _cards = new List<GameCard>();
@@ -26,15 +27,15 @@ namespace Sensori.Montessori
             for (int i = transform.childCount - 1; i >= 0; i--)
                 DestroyImmediate(transform.GetChild(i).gameObject);
 
-            BuildHeader(theme);
+            BuildHeader();
             _choices = UiFactory.Rect("ZoneChoix", transform);
             _area = UiFactory.Rect("ZoneJeux", transform);
             FitZones();
 
-            BuildChoices(catalog, theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null, theme);
+            BuildChoices(catalog);
             if (games == null || games.Length == 0)
                 games = GamesFrom(catalog);
-            BuildGames(games, theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null, theme);
+            BuildGames(games);
 
             _area.gameObject.SetActive(false);
             _choices.gameObject.SetActive(true);
@@ -46,21 +47,20 @@ namespace Sensori.Montessori
         public void EnsureMenus(ContentCatalog catalog, Sprite panel, Sprite shadow)
         {
             EnsureRefs();
-            var theme = HarvestTheme(panel, shadow);
             if (_choices == null)
                 _choices = UiFactory.Rect("ZoneChoix", transform);
             if (_area == null)
                 _area = UiFactory.Rect("ZoneJeux", transform);
             FitZones();
-            RestyleHeader();
+            RebuildHeader();
 
             RetireChildren(_choices);
             _choiceCards.Clear();
-            BuildChoices(catalog, theme.Panel, theme.Shadow, theme);
+            BuildChoices(catalog);
 
             RetireChildren(_area);
             _cards.Clear();
-            BuildGames(GamesFrom(catalog), theme.Panel, theme.Shadow, theme);
+            BuildGames(GamesFrom(catalog));
 
             if (!_showingGames)
             {
@@ -84,6 +84,7 @@ namespace Sensori.Montessori
                 _subtitle.text = "Alphabet, chiffres, formes, couleurs et mots";
             ApplyFont(_title);
             ApplyFont(_subtitle);
+            StyleHeader();
             if (_area != null)
                 _area.gameObject.SetActive(false);
             if (_choices != null)
@@ -120,6 +121,7 @@ namespace Sensori.Montessori
                 _subtitle.text = category != null ? category.Subtitle : string.Empty;
             ApplyFont(_title);
             ApplyFont(_subtitle);
+            StyleHeader();
 
             for (int i = 0; i < _cards.Count; i++)
             {
@@ -129,7 +131,7 @@ namespace Sensori.Montessori
                 bool available = category != null && category.HasGame(card.GameId);
                 card.Root.gameObject.SetActive(available);
                 card.Refresh();
-                var labels = card.Root.GetComponentsInChildren<Text>(true);
+                var labels = card.Root.GetComponentsInChildren<TMP_Text>(true);
                 for (int t = 0; t < labels.Length; t++)
                     ApplyFont(labels[t]);
             }
@@ -142,25 +144,37 @@ namespace Sensori.Montessori
             ScreenBackdrop.Ensure(transform, "categories");
         }
 
-        void BuildHeader(ThemeAssets theme)
+        void BuildHeader()
         {
             var header = UiFactory.Rect("Entete", transform);
             UiFactory.AnchorTop(header, 156f, 28f, 28f);
-            if (theme != null)
-                BuildBackButton(header, theme);
+            BuildBackButton(header);
 
-            _title = UiFactory.Label("Titre", header, "Catégories", 48, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
+            _title = UiFactory.Tmp("Titre", header, "Catégories", 56f, Color.white, true);
             UiFactory.Stretch(_title.rectTransform, 120f, 64f, 120f, 6f);
-            _title.font = ReadableFont();
-            _title.fontStyle = FontStyle.Bold;
-            _title.alignByGeometry = false;
-            _subtitle = UiFactory.Label("SousTitre", header, "Alphabet, chiffres, formes, couleurs et mots", 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
+            _subtitle = UiFactory.Tmp("SousTitre", header, "Alphabet, chiffres, formes, couleurs et mots", 26f, Color.white, false);
             UiFactory.Stretch(_subtitle.rectTransform, 120f, 10f, 120f, 96f);
-            _subtitle.font = ReadableFont();
-            _subtitle.alignByGeometry = false;
+            StyleHeader();
         }
 
-        static void BuildBackButton(Transform header, ThemeAssets theme)
+        void RebuildHeader()
+        {
+            var existing = transform.Find("Entete");
+            if (existing != null)
+            {
+                existing.gameObject.SetActive(false);
+                existing.SetParent(null, false);
+                if (Application.isPlaying)
+                    Destroy(existing.gameObject);
+                else
+                    DestroyImmediate(existing.gameObject);
+            }
+            _title = null;
+            _subtitle = null;
+            BuildHeader();
+        }
+
+        static void BuildBackButton(Transform header)
         {
             var back = UiFactory.Rect("Retour", header);
             back.anchorMin = new Vector2(0f, 0.5f);
@@ -168,19 +182,21 @@ namespace Sensori.Montessori
             back.pivot = new Vector2(0f, 0.5f);
             back.sizeDelta = new Vector2(92f, 92f);
             back.anchoredPosition = new Vector2(8f, 0f);
-            var image = UiFactory.Picture("Face", back, theme.Pearl, MontessoriPalette.Maple, false, true);
+            var image = UiFactory.Picture("Face", back, UiFactory.CircleSprite(), CoralButton, false, true);
             UiFactory.Stretch(image.rectTransform, 0f, 0f, 0f, 0f);
-            image.preserveAspect = false;
+            image.preserveAspect = true;
             image.raycastTarget = true;
-            var label = UiFactory.Label("Glyph", image.transform, "<", 54, MontessoriPalette.Ink, TextAnchor.MiddleCenter);
-            UiFactory.Stretch(label.rectTransform, 0f, 0f, 0f, 0f);
-            label.font = ReadableFont();
-            label.raycastTarget = false;
+            var drop = image.gameObject.AddComponent<Shadow>();
+            drop.effectColor = new Color(0f, 0f, 0f, 0.28f);
+            drop.effectDistance = new Vector2(0f, -5f);
+            drop.useGraphicAlpha = true;
+            var label = UiFactory.Tmp("Glyph", image.transform, "<", 64f, Color.white, true);
+            UiFactory.Stretch(label.rectTransform, 0f, 4f, 6f, 0f);
             image.gameObject.AddComponent<Pressable>();
             UiFactory.CreateButton(image.gameObject);
         }
 
-        void BuildChoices(ContentCatalog catalog, Sprite panel, Sprite shadow, ThemeAssets theme)
+        void BuildChoices(ContentCatalog catalog)
         {
             if (_choices == null || catalog == null)
                 return;
@@ -188,71 +204,57 @@ namespace Sensori.Montessori
             for (int i = 0; i < categories.Length; i++)
             {
                 if (categories[i] != null)
-                    CreateChoice(categories[i], panel, shadow, theme);
+                    CreateChoice(categories[i]);
             }
         }
 
-        void BuildGames(MiniGameDefinition[] games, Sprite panel, Sprite shadow, ThemeAssets theme)
+        void BuildGames(MiniGameDefinition[] games)
         {
             if (_area == null || games == null)
                 return;
             for (int i = 0; i < games.Length; i++)
             {
                 if (games[i] != null)
-                    CreateGame(games[i], panel, shadow, theme);
+                    CreateGame(games[i]);
             }
         }
 
-        void CreateChoice(LearningCategory category, Sprite panel, Sprite shadow, ThemeAssets theme)
+        void CreateChoice(LearningCategory category)
         {
             var root = UiFactory.Rect("Choix_" + category.CategoryId, _choices);
             UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(300f, 392f));
             var group = UiFactory.AddGroup(root.gameObject);
-            BuildShadow(root, shadow);
 
-            var face = BuildFace(root, panel);
-            Sprite pearl = theme != null ? theme.Pearl : null;
-            BuildHalo(face.transform, pearl, category.Accent);
-            RectTransform medal;
-            if (category.CategoryId == "alphabet")
-            {
-                medal = BuildMedallion(face.transform, pearl);
-                BuildAlphabetMark(medal);
-            }
-            else
-                medal = BuildBadge(face.transform, theme != null ? theme.IconForCategory(category.CategoryId) : null, pearl);
+            var face = BuildFace(root, BorderFor(category.CategoryId));
+            var disc = BuildDisc(face.transform, PastelFor(category.CategoryId));
+            BuildMark(disc, category.CategoryId);
 
-            BuildRibbon(face.transform, pearl, category.Accent);
-
-            var title = BuildTitle(face.transform, category.Title, 36);
-            var count = BuildCaption(face.transform, "Compte", "", 22, MontessoriPalette.InkSoft);
+            var title = BuildTitle(face.transform, category.Title, 36f);
+            var count = BuildCaption(face.transform, "Compte", "", 26f, MontessoriPalette.Ink);
 
             face.gameObject.AddComponent<Pressable>();
             root.gameObject.AddComponent<ShelfTile>().Apply();
             var card = face.gameObject.AddComponent<CategoryCard>();
-            card.Bind(category, title, count, root, medal, group);
+            card.Bind(category, title, count, root, disc, group);
             card.Refresh();
             _choiceCards.Add(card);
         }
 
-        void CreateGame(MiniGameDefinition game, Sprite panel, Sprite shadow, ThemeAssets theme)
+        void CreateGame(MiniGameDefinition game)
         {
             var root = UiFactory.Rect("Jeu_" + game.GameId, _area);
             UiFactory.AnchorCenter(root, Vector2.zero, new Vector2(360f, 460f));
             var group = UiFactory.AddGroup(root.gameObject);
-            BuildShadow(root, shadow);
 
-            var face = BuildFace(root, panel);
-            Sprite pearl = theme != null ? theme.Pearl : null;
-            BuildHalo(face.transform, pearl, game.Accent);
-            var medal = BuildBadge(face.transform, theme != null ? theme.IconForGame(game.GameId) : null, pearl);
-            BuildRibbon(face.transform, pearl, game.Accent);
+            var face = BuildFace(root, BorderFor(game.GameId));
+            var disc = BuildDisc(face.transform, PastelFor(game.GameId));
+            BuildMark(disc, game.GameId);
 
-            var title = BuildTitle(face.transform, game.Title, 34);
-            var description = BuildCaption(face.transform, "Description", game.Description, 22, MontessoriPalette.InkSoft);
-            description.resizeTextForBestFit = true;
-            description.resizeTextMinSize = 16;
-            description.resizeTextMaxSize = 24;
+            var title = BuildTitle(face.transform, game.Title, 34f);
+            var description = BuildCaption(face.transform, "Description", game.Description, 22f, MontessoriPalette.Ink);
+            description.enableAutoSizing = true;
+            description.fontSizeMin = 16f;
+            description.fontSizeMax = 24f;
 
             face.gameObject.AddComponent<Pressable>();
             root.gameObject.AddComponent<ShelfTile>().Apply();
@@ -373,13 +375,13 @@ namespace Sensori.Montessori
             {
                 var title = transform.Find("Entete/Titre");
                 if (title != null)
-                    _title = title.GetComponent<Text>();
+                    _title = title.GetComponent<TMP_Text>();
             }
             if (_subtitle == null)
             {
                 var subtitle = transform.Find("Entete/SousTitre");
                 if (subtitle != null)
-                    _subtitle = subtitle.GetComponent<Text>();
+                    _subtitle = subtitle.GetComponent<TMP_Text>();
             }
         }
 
@@ -544,29 +546,41 @@ namespace Sensori.Montessori
                 UiFactory.Stretch(_area, 72f, 36f, 72f, 180f);
         }
 
-        void RestyleHeader()
+        void StyleHeader()
         {
             var header = transform.Find("Entete") as RectTransform;
             if (header != null)
                 UiFactory.AnchorTop(header, 156f, 28f, 28f);
             if (_title != null)
             {
-                _title.fontSize = 48;
-                _title.fontStyle = FontStyle.Bold;
-                _title.color = MontessoriPalette.WalnutDeep;
-                _title.alignByGeometry = false;
+                _title.fontSize = 56f;
+                _title.fontStyle = FontStyles.Bold;
+                _title.color = Color.white;
+                _title.alignment = TextAlignmentOptions.Center;
                 UiFactory.Stretch(_title.rectTransform, 120f, 64f, 120f, 8f);
                 ApplyFont(_title);
+                var outline = _title.GetComponent<Outline>();
+                if (outline == null)
+                    outline = _title.gameObject.AddComponent<Outline>();
+                outline.effectColor = Navy;
+                outline.effectDistance = new Vector2(4f, -4f);
+                outline.useGraphicAlpha = true;
             }
             if (_subtitle != null)
             {
-                _subtitle.fontSize = 24;
-                _subtitle.color = MontessoriPalette.InkSoft;
-                _subtitle.alignByGeometry = false;
-                _subtitle.horizontalOverflow = HorizontalWrapMode.Wrap;
-                _subtitle.verticalOverflow = VerticalWrapMode.Overflow;
+                _subtitle.fontSize = 26f;
+                _subtitle.color = Color.white;
+                _subtitle.alignment = TextAlignmentOptions.Center;
+                _subtitle.textWrappingMode = TextWrappingModes.Normal;
+                _subtitle.overflowMode = TextOverflowModes.Overflow;
                 UiFactory.Stretch(_subtitle.rectTransform, 120f, 10f, 120f, 92f);
                 ApplyFont(_subtitle);
+                var shadow = _subtitle.GetComponent<Shadow>();
+                if (shadow == null || shadow is Outline)
+                    shadow = _subtitle.gameObject.AddComponent<Shadow>();
+                shadow.effectColor = new Color(0f, 0f, 0f, 0.35f);
+                shadow.effectDistance = new Vector2(0f, -2f);
+                shadow.useGraphicAlpha = true;
             }
         }
 
@@ -681,136 +695,171 @@ namespace Sensori.Montessori
             }
         }
 
-        static void BuildShadow(RectTransform root, Sprite shadow)
-        {
-            if (shadow == null)
-                return;
-            var shadowImage = UiFactory.Picture("Ombre", root, shadow, MontessoriPalette.WithAlpha(MontessoriPalette.WalnutDeep, 0.33f), false, false);
-            UiFactory.Stretch(shadowImage.rectTransform, -12f, -30f, -12f, 8f);
-            shadowImage.preserveAspect = false;
-            shadowImage.raycastTarget = false;
-        }
+        static readonly Color CardPaper = new Color(1f, 0.99215686f, 0.96862745f, 1f);
+        static readonly Color Navy = new Color(0.102f, 0.212f, 0.365f, 1f);
+        static readonly Color CoralButton = new Color(1f, 0.420f, 0.345f, 1f);
 
-        static Image BuildFace(RectTransform root, Sprite panel)
+        static Image BuildFace(RectTransform root, Color border)
         {
-            var face = UiFactory.Picture("Face", root, panel, Color.white, panel != null, true);
+            var sprite = UiFactory.RoundedSprite();
+            var face = UiFactory.Picture("Face", root, sprite, CardPaper, sprite != null, true);
             UiFactory.Stretch(face.rectTransform, 0f, 0f, 0f, 0f);
             face.preserveAspect = false;
+            face.material = null;
             face.raycastTarget = true;
+            var outline = face.gameObject.AddComponent<Outline>();
+            outline.effectColor = border;
+            outline.effectDistance = new Vector2(7f, -7f);
+            outline.useGraphicAlpha = true;
+            var drop = face.gameObject.AddComponent<Shadow>();
+            drop.effectColor = new Color(0f, 0f, 0f, 0.2f);
+            drop.effectDistance = new Vector2(0f, -8f);
+            drop.useGraphicAlpha = true;
             return face;
         }
 
-        static void BuildHalo(Transform parent, Sprite pearl, Color accent)
+        static RectTransform BuildDisc(Transform parent, Color pastel)
         {
-            if (pearl != null)
+            var disc = UiFactory.Picture("Disque", parent, UiFactory.CircleSprite(), pastel, false, false);
+            disc.preserveAspect = true;
+            disc.raycastTarget = false;
+            return disc.rectTransform;
+        }
+
+        static void BuildMark(RectTransform disc, string id)
+        {
+            if (disc == null)
+                return;
+            if (id == "formes" || id == GameIds.Puzzle)
             {
-                var halo = UiFactory.Picture("Halo", parent, pearl, accent, false, false);
-                halo.preserveAspect = true;
-                halo.raycastTarget = false;
+                BuildShapeCluster(disc);
                 return;
             }
-            var rect = UiFactory.Rect("Halo", parent);
-            var shape = rect.gameObject.AddComponent<SoftShape>();
-            shape.Configure(TokenShape.Disc, accent);
-            shape.raycastTarget = false;
-        }
-
-        static RectTransform BuildMedallion(Transform parent, Sprite pearl)
-        {
-            if (pearl != null)
+            if (id == "couleurs")
             {
-                var medal = UiFactory.Picture("Medaillon", parent, pearl, MontessoriPalette.Cream, false, false);
-                medal.preserveAspect = true;
-                medal.raycastTarget = false;
-                return medal.rectTransform;
-            }
-            var rect = UiFactory.Rect("Medaillon", parent);
-            var shape = rect.gameObject.AddComponent<SoftShape>();
-            shape.Configure(TokenShape.Disc, MontessoriPalette.Cream);
-            shape.raycastTarget = false;
-            return rect;
-        }
-
-        static RectTransform BuildBadge(Transform parent, Sprite icon, Sprite pearl)
-        {
-            if (icon != null)
-            {
-                var badge = UiFactory.Picture("Medaillon", parent, icon, Color.white, false, false);
-                badge.preserveAspect = true;
-                badge.raycastTarget = false;
-                return badge.rectTransform;
-            }
-            return BuildMedallion(parent, pearl);
-        }
-
-        static void BuildAlphabetMark(RectTransform medal)
-        {
-            if (medal == null)
+                BuildColorCluster(disc);
                 return;
-            var a = UiFactory.Label("Glyphe", medal, "A", 78, MontessoriPalette.VowelBlue, TextAnchor.MiddleCenter);
-            a.rectTransform.anchorMin = new Vector2(0.04f, 0.14f);
-            a.rectTransform.anchorMax = new Vector2(0.50f, 0.86f);
-            a.rectTransform.offsetMin = Vector2.zero;
-            a.rectTransform.offsetMax = Vector2.zero;
-            StyleLetter(a);
-            var m = UiFactory.Label("Glyphe", medal, "M", 78, MontessoriPalette.ConsonantRose, TextAnchor.MiddleCenter);
-            m.rectTransform.anchorMin = new Vector2(0.46f, 0.14f);
-            m.rectTransform.anchorMax = new Vector2(0.96f, 0.86f);
-            m.rectTransform.offsetMin = Vector2.zero;
-            m.rectTransform.offsetMax = Vector2.zero;
-            StyleLetter(m);
+            }
+            if (id == GameIds.Tracing)
+            {
+                BuildGlyph(disc, "A", MontessoriPalette.VowelBlue, 72f);
+                var bar = UiFactory.Rect("Trait", disc);
+                bar.anchorMin = new Vector2(0.22f, 0.18f);
+                bar.anchorMax = new Vector2(0.78f, 0.30f);
+                bar.offsetMin = Vector2.zero;
+                bar.offsetMax = Vector2.zero;
+                var line = bar.gameObject.AddComponent<Image>();
+                line.color = MontessoriPalette.Coral;
+                line.raycastTarget = false;
+                return;
+            }
+            string glyph = "Aa";
+            Color ink = MontessoriPalette.Hex("#6B3FA0");
+            float size = 64f;
+            if (id == "alphabet")
+            {
+                glyph = "ABC";
+                ink = MontessoriPalette.Hex("#E23B4A");
+                size = 52f;
+            }
+            else if (id == "chiffres")
+            {
+                glyph = "1 2 3";
+                ink = MontessoriPalette.VowelBlue;
+                size = 44f;
+            }
+            BuildGlyph(disc, glyph, ink, size);
         }
 
-        static void StyleLetter(Text letter)
+        static void BuildGlyph(RectTransform disc, string value, Color color, float size)
         {
-            letter.font = ReadableFont();
-            letter.fontStyle = FontStyle.Bold;
-            letter.alignByGeometry = false;
-            letter.resizeTextForBestFit = true;
-            letter.resizeTextMinSize = 28;
-            letter.resizeTextMaxSize = 96;
-            letter.horizontalOverflow = HorizontalWrapMode.Wrap;
-            letter.verticalOverflow = VerticalWrapMode.Truncate;
-            letter.raycastTarget = false;
-            var shadow = letter.gameObject.AddComponent<Shadow>();
-            shadow.effectColor = MontessoriPalette.WithAlpha(letter.color, 0.18f);
-            shadow.effectDistance = new Vector2(0f, -2f);
-            shadow.useGraphicAlpha = true;
+            var label = UiFactory.Tmp("Marque", disc, value, size, color, true);
+            UiFactory.Stretch(label.rectTransform, 10f, 12f, 10f, 8f);
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 22f;
+            label.fontSizeMax = size;
         }
 
-        static void BuildRibbon(Transform parent, Sprite pearl, Color accent)
+        static void BuildShapeCluster(RectTransform disc)
         {
-            var ribbon = UiFactory.Picture("Ruban", parent, pearl, accent, false, false);
-            ribbon.preserveAspect = false;
-            ribbon.raycastTarget = false;
+            var circle = UiFactory.Picture("Rond", disc, UiFactory.CircleSprite(), MontessoriPalette.Hex("#2F74D0"), false, false);
+            AnchorIn(circle.rectTransform, new Vector2(0.30f, 0.58f), new Vector2(0.34f, 0.34f));
+            var square = UiFactory.Rect("Carre", disc);
+            AnchorIn(square, new Vector2(0.62f, 0.40f), new Vector2(0.30f, 0.30f));
+            var squareImage = square.gameObject.AddComponent<Image>();
+            squareImage.color = new Color(0.12f, 0.12f, 0.14f, 1f);
+            squareImage.raycastTarget = false;
+            var triangle = UiFactory.Rect("Triangle", disc);
+            AnchorIn(triangle, new Vector2(0.70f, 0.68f), new Vector2(0.32f, 0.32f));
+            var shape = triangle.gameObject.AddComponent<SoftShape>();
+            shape.Configure(TokenShape.Triangle, MontessoriPalette.Hex("#E24B4B"));
         }
 
-        static Text BuildTitle(Transform parent, string value, int size)
+        static void BuildColorCluster(RectTransform disc)
         {
-            var title = UiFactory.Label("Etiquette", parent, value, size, MontessoriPalette.WalnutDeep, TextAnchor.MiddleCenter);
-            title.font = ReadableFont();
-            title.fontStyle = FontStyle.Bold;
-            title.alignByGeometry = false;
-            title.resizeTextForBestFit = true;
-            title.resizeTextMinSize = 20;
-            title.resizeTextMaxSize = size;
-            title.horizontalOverflow = HorizontalWrapMode.Wrap;
-            title.verticalOverflow = VerticalWrapMode.Truncate;
-            title.raycastTarget = false;
+            PlaceSwatch(disc, "Rouge", MontessoriPalette.Hex("#E24B4B"), new Vector2(0.38f, 0.58f));
+            PlaceSwatch(disc, "Jaune", MontessoriPalette.Hex("#F2C14E"), new Vector2(0.62f, 0.58f));
+            PlaceSwatch(disc, "Bleu", MontessoriPalette.Hex("#2F74D0"), new Vector2(0.50f, 0.36f));
+        }
+
+        static void PlaceSwatch(RectTransform disc, string name, Color color, Vector2 anchor)
+        {
+            var swatch = UiFactory.Picture(name, disc, UiFactory.CircleSprite(), color, false, false);
+            AnchorIn(swatch.rectTransform, anchor, new Vector2(0.38f, 0.38f));
+        }
+
+        static void AnchorIn(RectTransform rect, Vector2 center, Vector2 size)
+        {
+            rect.anchorMin = center - size * 0.5f;
+            rect.anchorMax = center + size * 0.5f;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+        }
+
+        static Color BorderFor(string id)
+        {
+            if (id == "alphabet" || id == GameIds.Puzzle)
+                return MontessoriPalette.Hex("#E23D3D");
+            if (id == "chiffres" || id == GameIds.Tracing)
+                return MontessoriPalette.Hex("#2F74D0");
+            if (id == "formes")
+                return MontessoriPalette.Hex("#2EAE5B");
+            if (id == "couleurs")
+                return MontessoriPalette.Hex("#E2B043");
+            return MontessoriPalette.Hex("#7B4FD0");
+        }
+
+        static Color PastelFor(string id)
+        {
+            if (id == "alphabet" || id == GameIds.Puzzle)
+                return MontessoriPalette.Hex("#FFD5DC");
+            if (id == "chiffres" || id == GameIds.Tracing)
+                return MontessoriPalette.Hex("#D4ECFF");
+            if (id == "formes")
+                return MontessoriPalette.Hex("#D9F6E3");
+            if (id == "couleurs")
+                return MontessoriPalette.Hex("#FFF4D2");
+            return MontessoriPalette.Hex("#E6D8FF");
+        }
+
+        static TMP_Text BuildTitle(Transform parent, string value, float size)
+        {
+            var title = UiFactory.Tmp("Etiquette", parent, value, size, MontessoriPalette.Ink, true);
+            title.enableAutoSizing = true;
+            title.fontSizeMin = 20f;
+            title.fontSizeMax = size;
+            title.overflowMode = TextOverflowModes.Ellipsis;
             return title;
         }
 
-        static Text BuildCaption(Transform parent, string name, string value, int size, Color color)
+        static TMP_Text BuildCaption(Transform parent, string name, string value, float size, Color color)
         {
-            var caption = UiFactory.Label(name, parent, value, size, color, TextAnchor.MiddleCenter);
-            caption.font = ReadableFont();
-            caption.alignByGeometry = false;
-            caption.resizeTextForBestFit = true;
-            caption.resizeTextMinSize = 15;
-            caption.resizeTextMaxSize = size;
-            caption.horizontalOverflow = HorizontalWrapMode.Wrap;
-            caption.verticalOverflow = VerticalWrapMode.Truncate;
-            caption.raycastTarget = false;
+            var caption = UiFactory.Tmp(name, parent, value, size, color, true);
+            caption.enableAutoSizing = true;
+            caption.fontSizeMin = 16f;
+            caption.fontSizeMax = size;
+            caption.overflowMode = TextOverflowModes.Ellipsis;
             return caption;
         }
 
@@ -836,16 +885,16 @@ namespace Sensori.Montessori
         {
             if (_choices == null)
                 return;
-            var texts = _choices.GetComponentsInChildren<Text>(true);
+            var texts = _choices.GetComponentsInChildren<TMP_Text>(true);
             for (int i = 0; i < texts.Length; i++)
                 ApplyFont(texts[i]);
         }
 
-        static void ApplyFont(Text text)
+        static void ApplyFont(TMP_Text text)
         {
             if (text == null)
                 return;
-            var font = ReadableFont();
+            var font = UiFactory.PlayFont();
             if (font != null)
                 text.font = font;
             text.raycastTarget = false;
@@ -878,10 +927,11 @@ namespace Sensori.Montessori
             if (w < 24f || h < 24f)
                 return;
 
-            float medal = Mathf.Min(w * 0.54f, h * 0.42f);
-            float medalY = h * 0.14f;
-            var medalRect = FindRect("Medaillon");
-            Place(FindRect("Halo"), new Vector2(0f, medalY), new Vector2(medal * 1.18f, medal * 1.18f));
+            float medal = Mathf.Min(w * 0.52f, h * 0.40f);
+            float medalY = h * 0.16f;
+            var medalRect = FindRect("Disque");
+            if (medalRect == null)
+                medalRect = FindRect("Medaillon");
             Place(medalRect, new Vector2(0f, medalY), new Vector2(medal, medal));
 
             var title = FindRect("Etiquette");

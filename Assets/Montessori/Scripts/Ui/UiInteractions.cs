@@ -1,4 +1,5 @@
 using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -132,9 +133,10 @@ namespace Sensori.Montessori
 
     public sealed class CategoryCard : MonoBehaviour, IPointerClickHandler
     {
+        static readonly Color Apple = new Color(0.435f, 0.859f, 0.184f, 1f);
         [SerializeField] LearningCategory _category;
-        [SerializeField] Text _title;
-        [SerializeField] Text _count;
+        [SerializeField] TMP_Text _title;
+        [SerializeField] TMP_Text _count;
         [SerializeField] RectTransform _root;
         [SerializeField] RectTransform _icon;
         [SerializeField] CanvasGroup _group;
@@ -144,7 +146,7 @@ namespace Sensori.Montessori
         public RectTransform Icon => _icon;
         public CanvasGroup Group => _group;
 
-        public void Bind(LearningCategory category, Text title, Text count, RectTransform root, RectTransform icon, CanvasGroup group)
+        public void Bind(LearningCategory category, TMP_Text title, TMP_Text count, RectTransform root, RectTransform icon, CanvasGroup group)
         {
             _category = category;
             _title = title;
@@ -166,20 +168,21 @@ namespace Sensori.Montessori
             if (_category.CategoryId == WordThemes.CategoryId && MontessoriApp.Instance != null)
                 total = MontessoriApp.Instance.ImagierCardCount;
             int done = LearningProgress.CountDiscovered(_category);
+            _count.fontStyle = FontStyles.Bold;
             if (done <= 0)
             {
                 _count.text = total + " " + _category.CountLabel;
-                _count.color = MontessoriPalette.InkSoft;
+                _count.color = MontessoriPalette.Ink;
             }
             else if (done >= total && total > 0)
             {
                 _count.text = "Terminé";
-                _count.color = MontessoriPalette.Success;
+                _count.color = Apple;
             }
             else
             {
                 _count.text = done + " / " + total;
-                _count.color = MontessoriPalette.InkSoft;
+                _count.color = Apple;
             }
         }
 
@@ -217,8 +220,8 @@ namespace Sensori.Montessori
     public sealed class GameCard : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] MiniGameDefinition _definition;
-        [SerializeField] Text _title;
-        [SerializeField] Text _description;
+        [SerializeField] TMP_Text _title;
+        [SerializeField] TMP_Text _description;
         [SerializeField] RectTransform _root;
         [SerializeField] CanvasGroup _group;
 
@@ -227,7 +230,7 @@ namespace Sensori.Montessori
         public CanvasGroup Group => _group;
         public string GameId => _definition != null ? _definition.GameId : string.Empty;
 
-        public void Bind(MiniGameDefinition definition, Text title, Text description, RectTransform root, CanvasGroup group)
+        public void Bind(MiniGameDefinition definition, TMP_Text title, TMP_Text description, RectTransform root, CanvasGroup group)
         {
             _definition = definition;
             _title = title;

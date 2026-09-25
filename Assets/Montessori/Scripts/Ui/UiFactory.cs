@@ -1,4 +1,6 @@
+using TMPro;
 using UnityEngine;
+using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
 namespace Sensori.Montessori
@@ -49,6 +51,83 @@ namespace Sensori.Montessori
             rect.pivot = new Vector2(0.5f, 0f);
             rect.offsetMin = new Vector2(left, 0f);
             rect.offsetMax = new Vector2(-right, height);
+        }
+
+        static Sprite _rounded;
+        static Sprite _circle;
+        static TMP_FontAsset _playFont;
+
+        public static Sprite RoundedSprite()
+        {
+            if (_rounded != null)
+                return _rounded;
+            const int size = 64;
+            const float border = 22f;
+            var raster = new Raster(size);
+            raster.RoundRect(0.5f, 0.5f, 0.98f, 0.98f, 0.34f, Color.white);
+            var texture = raster.ToTexture("soft-round");
+            _rounded = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f),
+                100f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(border, border, border, border));
+            _rounded.name = "soft-round";
+            return _rounded;
+        }
+
+        public static Sprite CircleSprite()
+        {
+            if (_circle != null)
+                return _circle;
+            const int size = 128;
+            var raster = new Raster(size);
+            raster.Clear(new Color(1f, 1f, 1f, 0f));
+            raster.Circle(0.5f, 0.5f, 0.48f, Color.white);
+            var texture = raster.ToTexture("flat-circle");
+            _circle = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f),
+                100f);
+            _circle.name = "flat-circle";
+            return _circle;
+        }
+
+        public static TMP_FontAsset PlayFont()
+        {
+            if (_playFont != null)
+                return _playFont;
+            var source = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (source == null)
+                source = UiFont.Builtin;
+            if (source == null)
+                return null;
+            _playFont = TMP_FontAsset.CreateFontAsset(source, 90, 9, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, true);
+            if (_playFont != null)
+                _playFont.name = "play-latin";
+            return _playFont;
+        }
+
+        public static TextMeshProUGUI Tmp(string name, Transform parent, string value, float size, Color color, bool bold)
+        {
+            var rect = Rect(name, parent);
+            var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
+            var font = PlayFont();
+            if (font != null)
+                text.font = font;
+            text.text = value;
+            text.fontSize = size;
+            text.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
+            text.color = color;
+            text.alignment = TextAlignmentOptions.Center;
+            text.textWrappingMode = TextWrappingModes.Normal;
+            text.overflowMode = TextOverflowModes.Overflow;
+            text.richText = false;
+            text.raycastTarget = false;
+            return text;
         }
 
         public static Image Picture(string name, Transform parent, Sprite sprite, Color color, bool sliced, bool raycast)
