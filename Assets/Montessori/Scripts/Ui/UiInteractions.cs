@@ -163,6 +163,8 @@ namespace Sensori.Montessori
             if (_count == null)
                 return;
             int total = _category.ItemCount;
+            if (_category.CategoryId == WordThemes.CategoryId && MontessoriApp.Instance != null)
+                total = MontessoriApp.Instance.ImagierCardCount;
             int done = LearningProgress.CountDiscovered(_category);
             if (done <= 0)
             {

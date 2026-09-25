@@ -5,7 +5,7 @@ namespace Sensori.Montessori
 {
     public static class MontessoriUiBuilder
     {
-        public static void Build(GameObject root, ContentCatalog catalog, ThemeAssets theme, MiniGameDefinition[] games)
+        public static void Build(GameObject root, ContentCatalog catalog, ThemeAssets theme, MiniGameDefinition[] games, WordCardDeck deck)
         {
             if (root.GetComponent<MontessoriApp>() == null)
                 root.AddComponent<MontessoriApp>();
@@ -68,6 +68,12 @@ namespace Sensori.Montessori
             var tracing = tracingObject.AddComponent<TracingGame>();
             tracing.Construct(theme);
 
+            var imagierParlantObject = UiFactory.Rect("ImagierParlant", safe).gameObject;
+            UiFactory.Stretch(imagierParlantObject.GetComponent<RectTransform>(), 0f, 0f, 0f, 0f);
+            var imagierParlant = imagierParlantObject.AddComponent<FlashcardPresenter>();
+            imagierParlant.Construct(theme, deck);
+            UiFactory.AddGroup(imagierParlantObject);
+
             var sparkleObject = UiFactory.Rect("Etincelles", canvasObject.transform).gameObject;
             var sparkles = sparkleObject.AddComponent<SparkleBurst>();
             sparkles.Construct(theme);
@@ -84,12 +90,13 @@ namespace Sensori.Montessori
             puzzleObject.SetActive(false);
             imagierObject.SetActive(false);
             tracingObject.SetActive(false);
+            imagierParlantObject.SetActive(false);
             gameRoot.SetActive(false);
             celebrationObject.SetActive(false);
             homeObject.SetActive(true);
 
             var app = root.GetComponent<MontessoriApp>();
-            app.Configure(catalog, home, category, gameRoot, celebration, sparkles);
+            app.Configure(catalog, home, category, gameRoot, celebration, sparkles, imagierParlant);
             app.PrepareCanvas();
         }
     }

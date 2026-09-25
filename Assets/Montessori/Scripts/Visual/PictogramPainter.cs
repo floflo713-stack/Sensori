@@ -145,6 +145,7 @@ namespace Sensori.Montessori
                 case "game-puzzle": GamePuzzle(raster); return;
                 case "game-imagier": GameImagier(raster); return;
                 case "game-trace": GameTrace(raster); return;
+                case "home-parlant": HomeParlant(raster); return;
                 default:
                     if (DrawWord(raster, id))
                         return;
@@ -246,6 +247,18 @@ namespace Sensori.Montessori
             Paper(raster, new Color32(110, 154, 114, 255));
             raster.RoundRect(0.50f, 0.50f, 0.46f, 0.58f, 0.06f, White);
             HeartShape(raster, new Color32(226, 75, 106, 255), 0.50f, 0.52f, 0.62f);
+        }
+
+        static void HomeParlant(Raster raster)
+        {
+            Paper(raster, new Color32(110, 154, 114, 255));
+            raster.RoundRect(0.46f, 0.48f, 0.42f, 0.52f, 0.06f, White);
+            raster.Circle(0.46f, 0.58f, 0.08f, new Color32(196, 146, 92, 255));
+            raster.Polygon(new Color32(196, 146, 92, 255), V(0.34f, 0.66f), V(0.42f, 0.66f), V(0.38f, 0.78f));
+            raster.Polygon(new Color32(196, 146, 92, 255), V(0.50f, 0.66f), V(0.58f, 0.66f), V(0.54f, 0.78f));
+            raster.Stroke(new Color32(106, 143, 191, 255), 0.035f, V(0.72f, 0.62f), V(0.84f, 0.62f));
+            raster.Stroke(new Color32(106, 143, 191, 255), 0.028f, V(0.74f, 0.50f), V(0.88f, 0.50f));
+            raster.Stroke(new Color32(106, 143, 191, 255), 0.022f, V(0.76f, 0.38f), V(0.90f, 0.38f));
         }
 
         static void GameTrace(Raster raster)

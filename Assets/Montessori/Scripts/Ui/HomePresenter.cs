@@ -63,6 +63,7 @@ namespace Sensori.Montessori
 
             BuildTokens(theme != null ? theme.Panel : null, theme != null ? theme.Shadow : null);
             SealWelcome();
+            EnsureMark();
             EnsureLandscape();
 
             if (catalog == null)
@@ -176,6 +177,7 @@ namespace Sensori.Montessori
             StyleShadow();
             StyleLegend();
             EnsureTitleLetters();
+            EnsureMark();
 
             var cards = transform.Find("ZoneCartes");
             if (cards != null)
@@ -283,6 +285,10 @@ namespace Sensori.Montessori
                 if (tokens[i] != null && tokens[i].gameObject.activeInHierarchy)
                     tokens[i].PlayArrival(0.18f + i * 0.07f);
             }
+
+            var mascot = PeanutMascot.Ensure(transform);
+            if (mascot != null)
+                mascot.PlayHomeWelcome(SensoriButton);
         }
 
         public Sprite PlateSprite()
@@ -306,6 +312,31 @@ namespace Sensori.Montessori
             rect.pivot = new Vector2(0.5f, 0.5f);
             rect.anchoredPosition = position;
             rect.sizeDelta = size;
+        }
+
+        void EnsureMark()
+        {
+            var existing = transform.Find("Marque");
+            Text mark;
+            if (existing != null)
+                mark = existing.GetComponent<Text>();
+            else
+                mark = UiFactory.Label("Marque", transform, "FM", 18, MontessoriPalette.WithAlpha(MontessoriPalette.InkSoft, 0.55f), TextAnchor.MiddleRight);
+            if (mark == null)
+                return;
+            mark.text = "FM";
+            mark.fontSize = 18;
+            mark.color = MontessoriPalette.WithAlpha(MontessoriPalette.InkSoft, 0.55f);
+            mark.alignment = TextAnchor.MiddleRight;
+            mark.raycastTarget = false;
+            mark.font = ReadableFont();
+            var rect = mark.rectTransform;
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot = new Vector2(1f, 0f);
+            rect.sizeDelta = new Vector2(72f, 32f);
+            rect.anchoredPosition = new Vector2(-36f, 22f);
+            mark.transform.SetAsLastSibling();
         }
 
         public static Font ReadableFont()

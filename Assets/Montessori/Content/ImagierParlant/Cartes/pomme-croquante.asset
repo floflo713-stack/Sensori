@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef66437bc00c37f4eb86549ced73f5dc, type: 3}
+  m_Name: pomme-croquante
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.WordCardData
+  _id: pomme-croquante
+  _motAffiche: Pomme croquante
+  _theme: 3
+  _illustration: {fileID: 21300000, guid: 5a9d5b4af1d88bd40b7995fa7a24ce5d, type: 3}
+  _pictogramme: pomme
+  _voixPrononciation: {fileID: 8300000, guid: aaec95114347e6b4fbb694e890c5c3a5, type: 3}
+  _effetSonore: {fileID: 8300000, guid: e0379db1332c94d4dacf17bf0094d0d7, type: 3}
+  _aide: 

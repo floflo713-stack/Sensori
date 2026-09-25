@@ -1,15 +1,18 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace Sensori.Montessori
 {
     public static class FrenchVoice
     {
         static readonly Dictionary<string, AudioClip> Cache = new Dictionary<string, AudioClip>();
+        static readonly HashSet<string> Loading = new HashSet<string>();
 
         public static void SayItem(LearningItem item)
         {
@@ -32,28 +35,91 @@ namespace Sensori.Montessori
 
         public static void Say(string phrase)
         {
-            if (string.IsNullOrEmpty(phrase) || WoodenAudio.Instance == null)
-                return;
-            string key = Slug(phrase);
-            if (string.IsNullOrEmpty(key))
-                return;
-            if (!Cache.TryGetValue(key, out var clip) || clip == null)
-            {
-                clip = Load(key);
-                if (clip == null)
-                    return;
-                Cache[key] = clip;
-            }
-            WoodenAudio.Instance.Say(clip);
+            TrySay(phrase);
         }
 
-        static AudioClip Load(string key)
+        public static bool TrySay(string phrase)
         {
-            string path = Path.Combine(Application.streamingAssetsPath, "Voix", key + ".wav");
+            if (string.IsNullOrEmpty(phrase) || WoodenAudio.Instance == null)
+            {
+                Debug.Log("[Voix] Lecture annulée. phrase=\"" + phrase + "\" WoodenAudio=" + (WoodenAudio.Instance != null));
+                return false;
+            }
+            string key = Slug(phrase);
+            if (string.IsNullOrEmpty(key))
+            {
+                Debug.Log("[Voix] Phrase sans fichier : \"" + phrase + "\"");
+                return false;
+            }
+            string path = VoicePath(key);
+            Debug.Log("[Voix] Recherche fichier \"" + key + ".wav\" chemin=" + path);
+            if (Cache.TryGetValue(key, out var clip) && clip != null)
+            {
+                Debug.Log("[Voix] Clip en cache \"" + key + "\" durée=" + clip.length.ToString("0.00", CultureInfo.InvariantCulture) + "s");
+                WoodenAudio.Instance.Say(clip);
+                return true;
+            }
+            if (NeedsWebRequest(path))
+            {
+                if (!Loading.Add(key))
+                {
+                    Debug.Log("[Voix] Chargement déjà en cours pour \"" + key + ".wav\"");
+                    return true;
+                }
+                WoodenAudio.Instance.StartCoroutine(LoadAndSay(key, path));
+                return true;
+            }
             if (!File.Exists(path))
-                return null;
-            byte[] bytes = File.ReadAllBytes(path);
-            return FromWav(key, bytes);
+            {
+                Debug.Log("[Voix] Fichier introuvable : " + path);
+                return false;
+            }
+            clip = FromWav(key, File.ReadAllBytes(path));
+            return PlayLoaded(key, clip);
+        }
+
+        public static string VoicePath(string key)
+        {
+            return Application.streamingAssetsPath + "/Voix/" + key + ".wav";
+        }
+
+        static bool NeedsWebRequest(string path)
+        {
+            return Application.platform == RuntimePlatform.Android
+                || path.IndexOf("://", StringComparison.Ordinal) >= 0
+                || path.IndexOf("jar:", StringComparison.Ordinal) >= 0;
+        }
+
+        static IEnumerator LoadAndSay(string key, string path)
+        {
+            using (var request = UnityWebRequest.Get(path))
+            {
+                yield return request.SendWebRequest();
+                Loading.Remove(key);
+                if (request.result != UnityWebRequest.Result.Success)
+                {
+                    Debug.Log("[Voix] Échec de lecture \"" + key + ".wav\" erreur=" + request.error + " chemin=" + path);
+                    yield break;
+                }
+                byte[] bytes = request.downloadHandler.data;
+                Debug.Log("[Voix] Octets reçus pour \"" + key + ".wav\" : " + (bytes != null ? bytes.Length : 0));
+                PlayLoaded(key, FromWav(key, bytes));
+            }
+        }
+
+        static bool PlayLoaded(string key, AudioClip clip)
+        {
+            if (clip == null)
+            {
+                Debug.Log("[Voix] Clip null pour \"" + key + ".wav\"");
+                return false;
+            }
+            Cache[key] = clip;
+            Debug.Log("[Voix] Clip trouvé \"" + clip.name + "\" durée=" + clip.length.ToString("0.00", CultureInfo.InvariantCulture) + "s");
+            if (WoodenAudio.Instance == null)
+                return false;
+            WoodenAudio.Instance.Say(clip);
+            return true;
         }
 
         static AudioClip FromWav(string clipName, byte[] wav)

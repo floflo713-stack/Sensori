@@ -21,6 +21,9 @@ namespace Sensori.Montessori
                 case "ciel": Ciel(raster); return true;
                 case "cœur": Coeur(raster); return true;
                 case "danse": Danse(raster); return true;
+                case "dents": Dents(raster); return true;
+                case "dodo": Dodo(raster); return true;
+                case "voiture-police": VoiturePolice(raster); return true;
                 case "dauphin": Dauphin(raster); return true;
                 case "doudou": Doudou(raster); return true;
                 case "dragon": Dragon(raster); return true;
@@ -111,6 +114,46 @@ namespace Sensori.Montessori
                 case "zoo": Zoo(raster); return true;
                 default: return false;
             }
+        }
+
+        static void VoiturePolice(Raster raster)
+        {
+            Paper(raster, Rgb(214, 228, 242));
+            raster.RoundRect(0.50f, 0.34f, 0.70f, 0.18f, 0.05f, White);
+            raster.RoundRect(0.50f, 0.34f, 0.70f, 0.07f, 0.02f, Rgb(31, 92, 196));
+            raster.RoundRect(0.48f, 0.52f, 0.40f, 0.16f, 0.05f, White);
+            raster.RoundRect(0.38f, 0.54f, 0.13f, 0.09f, 0.02f, Rgb(186, 220, 236));
+            raster.RoundRect(0.58f, 0.54f, 0.13f, 0.09f, 0.02f, Rgb(186, 220, 236));
+            raster.RoundRect(0.50f, 0.66f, 0.28f, 0.06f, 0.02f, Rgb(40, 48, 64));
+            raster.Circle(0.40f, 0.68f, 0.035f, Rgb(226, 48, 58));
+            raster.Circle(0.60f, 0.68f, 0.035f, Rgb(47, 116, 208));
+            raster.Circle(0.30f, 0.22f, 0.065f, Ink);
+            raster.Circle(0.30f, 0.22f, 0.028f, Rgb(210, 210, 210));
+            raster.Circle(0.70f, 0.22f, 0.065f, Ink);
+            raster.Circle(0.70f, 0.22f, 0.028f, Rgb(210, 210, 210));
+        }
+
+        static void Dents(Raster raster)
+        {
+            Paper(raster, Rgb(186, 220, 232));
+            raster.RoundRect(0.50f, 0.42f, 0.46f, 0.16f, 0.06f, White);
+            raster.Circle(0.32f, 0.46f, 0.045f, White);
+            raster.Circle(0.44f, 0.50f, 0.045f, White);
+            raster.Circle(0.56f, 0.50f, 0.045f, White);
+            raster.Circle(0.68f, 0.46f, 0.045f, White);
+            raster.RoundRect(0.50f, 0.28f, 0.08f, 0.22f, 0.03f, Rgb(120, 168, 210));
+            raster.Ellipse(0.50f, 0.62f, 0.16f, 0.08f, Rgb(244, 196, 160));
+        }
+
+        static void Dodo(Raster raster)
+        {
+            Paper(raster, Rgb(186, 176, 214));
+            raster.Ellipse(0.50f, 0.28f, 0.28f, 0.08f, Rgb(226, 214, 196));
+            raster.Circle(0.42f, 0.48f, 0.14f, Rgb(244, 214, 186));
+            raster.Ellipse(0.62f, 0.40f, 0.16f, 0.10f, Rgb(226, 120, 140));
+            raster.Circle(0.38f, 0.50f, 0.02f, Ink);
+            raster.Circle(0.70f, 0.72f, 0.04f, Rgb(242, 193, 78));
+            raster.Circle(0.80f, 0.64f, 0.025f, Rgb(242, 193, 78));
         }
 
         static void Abricot(Raster raster)

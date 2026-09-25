@@ -81,7 +81,7 @@ namespace Sensori.Montessori
             if (_title != null)
                 _title.text = "Catégories";
             if (_subtitle != null)
-                _subtitle.text = "Alphabet, chiffres, formes et couleurs";
+                _subtitle.text = "Alphabet, chiffres, formes, couleurs et mots";
             ApplyFont(_title);
             ApplyFont(_subtitle);
             if (_area != null)
@@ -154,7 +154,7 @@ namespace Sensori.Montessori
             _title.font = ReadableFont();
             _title.fontStyle = FontStyle.Bold;
             _title.alignByGeometry = false;
-            _subtitle = UiFactory.Label("SousTitre", header, "Alphabet, chiffres, formes et couleurs", 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
+            _subtitle = UiFactory.Label("SousTitre", header, "Alphabet, chiffres, formes, couleurs et mots", 24, MontessoriPalette.InkSoft, TextAnchor.MiddleCenter);
             UiFactory.Stretch(_subtitle.rectTransform, 120f, 10f, 120f, 96f);
             _subtitle.font = ReadableFont();
             _subtitle.alignByGeometry = false;
@@ -613,6 +613,8 @@ namespace Sensori.Montessori
                 theme.IconShapes = image.sprite;
             if (theme.IconColors == null && (spriteName.Contains("color") || spriteName.Contains("colour")))
                 theme.IconColors = image.sprite;
+            if (theme.IconParlant == null && spriteName.Contains("parlant"))
+                theme.IconParlant = image.sprite;
             if (theme.IconPuzzle == null && spriteName.Contains("puzzle"))
                 theme.IconPuzzle = image.sprite;
             if (theme.IconImagier == null && spriteName.Contains("imagier"))
@@ -649,6 +651,8 @@ namespace Sensori.Montessori
                 theme.IconShapes = sprite;
             else if (categoryId == "couleurs" && theme.IconColors == null)
                 theme.IconColors = sprite;
+            else if (categoryId == WordThemes.CategoryId && theme.IconParlant == null)
+                theme.IconParlant = sprite;
         }
 
         static void AssignGameIcon(ThemeAssets theme, string gameId, Sprite sprite)

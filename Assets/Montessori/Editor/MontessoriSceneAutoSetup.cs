@@ -55,6 +55,7 @@ namespace Sensori.Montessori.Editor
                 EditorUtility.DisplayProgressBar("Sensori", "Catalogue", 0.55f);
                 var games = CreateGames();
                 var categories = CreateCategories(games);
+                var deck = CreateImagierDeck();
                 var catalog = Upsert<ContentCatalog>(CatalogPath);
                 catalog.Define(categories);
                 EditorUtility.SetDirty(catalog);
@@ -80,7 +81,7 @@ namespace Sensori.Montessori.Editor
                 CreateEventSystem();
 
                 var root = new GameObject("Sensori");
-                MontessoriUiBuilder.Build(root, catalog, theme, games);
+                MontessoriUiBuilder.Build(root, catalog, theme, games, deck);
                 WireSensoriButton(root);
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene, ScenePath);
@@ -163,6 +164,7 @@ namespace Sensori.Montessori.Editor
                 IconDigits = SaveSprite("icon-digits", PictogramPainter.CreateTexture("home-digits", 256), Vector4.zero),
                 IconShapes = SaveSprite("icon-shapes", PictogramPainter.CreateTexture("home-shapes", 256), Vector4.zero),
                 IconColors = SaveSprite("icon-colors", PictogramPainter.CreateTexture("home-colors", 256), Vector4.zero),
+                IconParlant = SaveSprite("icon-parlant", PictogramPainter.CreateTexture("home-parlant", 256), Vector4.zero),
                 IconPuzzle = SaveSprite("icon-puzzle", PictogramPainter.CreateTexture("game-puzzle", 256), Vector4.zero),
                 IconImagier = SaveSprite("icon-imagier", PictogramPainter.CreateTexture("game-imagier", 256), Vector4.zero),
                 IconTrace = SaveSprite("icon-trace", PictogramPainter.CreateTexture("game-trace", 256), Vector4.zero)
@@ -212,6 +214,7 @@ namespace Sensori.Montessori.Editor
                 }
 
                 var category = Upsert<LearningCategory>(ContentFolder + "/Categories/" + seed.Id + ".asset");
+                var assigned = seed.Id == WordThemes.CategoryId ? new MiniGameDefinition[0] : games;
                 category.Define(
                     seed.Id,
                     seed.Title,
@@ -220,11 +223,193 @@ namespace Sensori.Montessori.Editor
                     seed.Accent,
                     seed.PuzzleGroupSize,
                     items,
-                    games);
+                    assigned);
                 EditorUtility.SetDirty(category);
                 categories[c] = category;
             }
             return categories;
+        }
+
+        static WordCardDeck CreateImagierDeck()
+        {
+            EnsureFolder(ContentFolder + "/ImagierParlant");
+            EnsureFolder(ContentFolder + "/ImagierParlant/Cartes");
+            EnsureFolder(ArtFolder + "/VoixCartes");
+
+            var cards = new[]
+            {
+                MakeCard("voiture-de-police", "Voiture de police", WordTheme.Vehicules, "voiture-police", "sirene", "Pin-pon, la voiture arrive"),
+                MakeCard("se-laver-les-dents", "Se laver les dents", WordTheme.ActionsQuotidien, "dents", "brossage", "En haut, en bas, tout doux"),
+                MakeCard("aller-au-dodo", "Aller au dodo", WordTheme.ActionsQuotidien, "dodo", "berceuse", "On ferme les yeux"),
+                MakeCard("petit-chat", "Petit chat", WordTheme.Animaux, "chat", "miaulement", string.Empty),
+                MakeCard("pomme-croquante", "Pomme croquante", WordTheme.Nourriture, "pomme", "croque", string.Empty)
+            };
+
+            var deck = Upsert<WordCardDeck>(ContentFolder + "/ImagierParlant/Paquet.asset");
+            deck.Define(cards);
+            EditorUtility.SetDirty(deck);
+            return deck;
+        }
+
+        static WordCardData MakeCard(string id, string mot, WordTheme theme, string pictogram, string effectKind, string aide)
+        {
+            var illustration = SaveSprite("carte-" + id, PictogramPainter.CreateTexture(pictogram, 512), Vector4.zero);
+            var voice = ImportVoice(id, mot);
+            var effect = ImportEffect(effectKind);
+            var card = Upsert<WordCardData>(ContentFolder + "/ImagierParlant/Cartes/" + id + ".asset");
+            card.Define(id, mot, theme, illustration, pictogram, voice, effect, aide);
+            EditorUtility.SetDirty(card);
+            return card;
+        }
+
+        static AudioClip ImportVoice(string id, string phrase)
+        {
+            string assetPath = ArtFolder + "/VoixCartes/voix-" + id + ".wav";
+            if (!SpeakPhrase(phrase, Absolute(assetPath)))
+                File.WriteAllBytes(Absolute(assetPath), ToneWav(id.GetHashCode(), 0.7f));
+            return ImportAudio(assetPath);
+        }
+
+        static bool SpeakPhrase(string phrase, string absolutePath)
+        {
+            if (string.IsNullOrEmpty(phrase))
+                return false;
+            string script = "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.SelectVoice('Microsoft Hortense Desktop'); $s.Rate = -2; $s.SetOutputToWaveFile('" + absolutePath.Replace("'", "''") + "'); $s.Speak('" + phrase.Replace("'", "''") + "'); $s.Dispose();";
+            var start = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "powershell",
+                Arguments = "-NoProfile -Command \"" + script.Replace("\"", "\\\"") + "\"",
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+            try
+            {
+                using (var process = System.Diagnostics.Process.Start(start))
+                {
+                    if (process == null)
+                        return false;
+                    process.WaitForExit(20000);
+                    return process.ExitCode == 0 && File.Exists(absolutePath);
+                }
+            }
+            catch (Exception exception)
+            {
+                Debug.LogWarning("[Imagier Parlant] Voix française indisponible pour « " + phrase + " » : " + exception.Message);
+                return false;
+            }
+        }
+
+        static AudioClip ImportEffect(string kind)
+        {
+            string assetPath = ArtFolder + "/VoixCartes/effet-" + kind + ".wav";
+            File.WriteAllBytes(Absolute(assetPath), EffectWav(kind));
+            return ImportAudio(assetPath);
+        }
+
+        static AudioClip ImportAudio(string assetPath)
+        {
+            AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
+            var importer = AssetImporter.GetAtPath(assetPath) as AudioImporter;
+            if (importer != null)
+            {
+                importer.forceToMono = true;
+                importer.loadInBackground = false;
+                var settings = importer.defaultSampleSettings;
+                settings.loadType = AudioClipLoadType.DecompressOnLoad;
+                settings.compressionFormat = AudioCompressionFormat.PCM;
+                importer.defaultSampleSettings = settings;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<AudioClip>(assetPath);
+        }
+
+        static byte[] ToneWav(int seed, float duration)
+        {
+            const int rate = 22050;
+            int count = Mathf.Max(8, Mathf.RoundToInt(rate * duration));
+            var samples = new short[count];
+            float first = 340f + (Mathf.Abs(seed) % 6) * 28f;
+            float second = first * 1.25f;
+            for (int i = 0; i < count; i++)
+            {
+                float time = i / (float)rate;
+                float local = time < duration * 0.46f ? time : time - duration * 0.5f;
+                float frequency = time < duration * 0.46f ? first : second;
+                float envelope = Mathf.Exp(-3.6f * Mathf.Max(0f, local)) * Mathf.Clamp01(local / 0.012f);
+                float sample = Mathf.Sin(2f * Mathf.PI * frequency * time) * envelope * 0.35f;
+                samples[i] = (short)Mathf.Clamp(Mathf.RoundToInt(sample * 32767f), short.MinValue, short.MaxValue);
+            }
+            return Wav(rate, samples);
+        }
+
+        static byte[] EffectWav(string kind)
+        {
+            const int rate = 22050;
+            float duration = kind == "croque" ? 0.28f : 1.1f;
+            int count = Mathf.Max(8, Mathf.RoundToInt(rate * duration));
+            var samples = new short[count];
+            var random = new System.Random(kind.GetHashCode());
+            for (int i = 0; i < count; i++)
+            {
+                float time = i / (float)rate;
+                float sample = 0f;
+                if (kind == "sirene")
+                {
+                    float freq = (Mathf.FloorToInt(time / 0.28f) % 2 == 0) ? 680f : 920f;
+                    float gate = Mathf.Clamp01(Mathf.Sin(time / 0.28f * Mathf.PI));
+                    sample = Mathf.Sin(2f * Mathf.PI * freq * time) * gate * 0.28f;
+                }
+                else if (kind == "brossage")
+                {
+                    float noise = (float)random.NextDouble() * 2f - 1f;
+                    float brush = Mathf.Abs(Mathf.Sin(time * 18f));
+                    sample = noise * brush * Mathf.Exp(-1.2f * time) * 0.22f;
+                }
+                else if (kind == "berceuse")
+                {
+                    float freq = Mathf.Lerp(520f, 280f, Mathf.Clamp01(time / duration));
+                    sample = Mathf.Sin(2f * Mathf.PI * freq * time) * Mathf.Exp(-1.6f * time) * 0.22f;
+                }
+                else if (kind == "miaulement")
+                {
+                    float freq = 700f + Mathf.Sin(time * 14f) * 180f;
+                    sample = Mathf.Sin(2f * Mathf.PI * freq * time) * Mathf.Exp(-2.4f * time) * 0.3f;
+                }
+                else
+                {
+                    float noise = (float)random.NextDouble() * 2f - 1f;
+                    float hit = time < 0.05f ? 1f : Mathf.Exp(-16f * time);
+                    sample = noise * hit * 0.45f;
+                }
+                samples[i] = (short)Mathf.Clamp(Mathf.RoundToInt(sample * 32767f), short.MinValue, short.MaxValue);
+            }
+            return Wav(rate, samples);
+        }
+
+        static byte[] Wav(int rate, short[] samples)
+        {
+            int dataBytes = samples.Length * 2;
+            var bytes = new byte[44 + dataBytes];
+            void Text(int offset, string value)
+            {
+                for (int i = 0; i < value.Length; i++)
+                    bytes[offset + i] = (byte)value[i];
+            }
+            Text(0, "RIFF");
+            System.BitConverter.GetBytes(36 + dataBytes).CopyTo(bytes, 4);
+            Text(8, "WAVE");
+            Text(12, "fmt ");
+            System.BitConverter.GetBytes(16).CopyTo(bytes, 16);
+            System.BitConverter.GetBytes((short)1).CopyTo(bytes, 20);
+            System.BitConverter.GetBytes((short)1).CopyTo(bytes, 22);
+            System.BitConverter.GetBytes(rate).CopyTo(bytes, 24);
+            System.BitConverter.GetBytes(rate * 2).CopyTo(bytes, 28);
+            System.BitConverter.GetBytes((short)2).CopyTo(bytes, 32);
+            System.BitConverter.GetBytes((short)16).CopyTo(bytes, 34);
+            Text(36, "data");
+            System.BitConverter.GetBytes(dataBytes).CopyTo(bytes, 40);
+            System.Buffer.BlockCopy(samples, 0, bytes, 44, dataBytes);
+            return bytes;
         }
 
         static void CreateCamera()

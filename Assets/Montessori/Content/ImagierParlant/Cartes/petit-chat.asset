@@ -1,0 +1,22 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ef66437bc00c37f4eb86549ced73f5dc, type: 3}
+  m_Name: petit-chat
+  m_EditorClassIdentifier: Assembly-CSharp::Sensori.Montessori.WordCardData
+  _id: petit-chat
+  _motAffiche: Petit chat
+  _theme: 1
+  _illustration: {fileID: 21300000, guid: 7ebe7887e7bd2aa418ab6695f7ae15aa, type: 3}
+  _pictogramme: chat
+  _voixPrononciation: {fileID: 8300000, guid: 38f7ccec1904f6340b7be9dee3a363a6, type: 3}
+  _effetSonore: {fileID: 8300000, guid: 432485b95cb20e143bfb7b23b8b64a28, type: 3}
+  _aide: 

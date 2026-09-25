@@ -213,7 +213,10 @@ namespace Sensori.Montessori
                 }
                 var back = transform.Find("Entete/Retour") as RectTransform;
                 if (Hit(back, screen, 8f))
+                {
+                    LeaveBoard();
                     return;
+                }
                 if (!Contains(_board, screen, cam))
                     return;
                 BeginStroke(screen, cam);
@@ -353,12 +356,28 @@ namespace Sensori.Montessori
 
         void RaiseButtons()
         {
+            var header = transform.Find("Entete");
+            if (header != null)
+                header.SetAsLastSibling();
             var clear = transform.Find("Effacer");
             var watch = transform.Find("Geste");
             if (clear != null)
                 clear.SetAsLastSibling();
             if (watch != null)
                 watch.SetAsLastSibling();
+        }
+
+        void LeaveBoard()
+        {
+            var back = transform.Find("Entete/Retour/Face");
+            var navigation = back != null ? back.GetComponent<NavigationButton>() : null;
+            if (navigation != null)
+            {
+                navigation.Navigate();
+                return;
+            }
+            if (MontessoriApp.Instance != null)
+                MontessoriApp.Instance.ShowCategory();
         }
 
         bool HitButton(string name, SimpleClick click, Vector2 screen)

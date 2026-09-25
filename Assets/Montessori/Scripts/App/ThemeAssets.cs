@@ -16,6 +16,7 @@ namespace Sensori.Montessori
         public Sprite IconDigits;
         public Sprite IconShapes;
         public Sprite IconColors;
+        public Sprite IconParlant;
         public Sprite IconPuzzle;
         public Sprite IconImagier;
         public Sprite IconTrace;
@@ -28,6 +29,7 @@ namespace Sensori.Montessori
                 case "chiffres": return IconDigits;
                 case "formes": return IconShapes;
                 case "couleurs": return IconColors;
+                case "imagier-parlant": return IconParlant != null ? IconParlant : IconImagier;
                 default: return Pearl;
             }
         }

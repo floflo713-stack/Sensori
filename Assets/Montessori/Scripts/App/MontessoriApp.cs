@@ -15,7 +15,8 @@ namespace Sensori.Montessori
             "Enseigne", "Legende", "Entete", "ZoneCartes", "ZoneJeux",
             "ZoneChoix", "SousTitre", "Compte", "Description", "Progression",
             "Glyph", "Libelle", "Embleme", "Titre", "Etiquette", "Etincelles",
-            "Jeton", "Jetons", "Forme", "Lettre"
+            "Jeton", "Jetons", "Forme", "Lettre", "Illustration", "Mot", "Aide",
+            "Papier", "Themes", "Lecteur", "Bandeau", "Ruban", "Compte"
         };
 
         [SerializeField] ContentCatalog _catalog;
@@ -24,11 +25,13 @@ namespace Sensori.Montessori
         [SerializeField] GameObject _gameRoot;
         [SerializeField] CelebrationView _celebration;
         [SerializeField] SparkleBurst _sparkles;
+        [SerializeField] FlashcardPresenter _imagier;
 
         LearningCategory _current;
         Button _sensoriButton;
 
         public ContentCatalog Catalog => _catalog;
+        public int ImagierCardCount => _imagier != null ? _imagier.CardCount : 0;
 
         public void Configure(
             ContentCatalog catalog,
@@ -36,7 +39,8 @@ namespace Sensori.Montessori
             CategoryPresenter category,
             GameObject gameRoot,
             CelebrationView celebration,
-            SparkleBurst sparkles)
+            SparkleBurst sparkles,
+            FlashcardPresenter imagier)
         {
             _catalog = catalog;
             _home = home;
@@ -44,6 +48,7 @@ namespace Sensori.Montessori
             _gameRoot = gameRoot;
             _celebration = celebration;
             _sparkles = sparkles;
+            _imagier = imagier;
         }
 
         void Awake()
@@ -72,6 +77,7 @@ namespace Sensori.Montessori
                 _category.EnsureMenus(_catalog, panel, shadow);
             }
             WireCategoryBack();
+            EnsureBackButtons();
             PrepareCanvas();
             WireHomeButton(_sensoriButton);
             if (_celebration != null)
@@ -130,9 +136,25 @@ namespace Sensori.Montessori
             if (category == null)
                 return;
             _current = category;
+            if (category.CategoryId == WordThemes.CategoryId)
+            {
+                ShowImagier();
+                return;
+            }
             SetScreen(_category != null ? _category.gameObject : null, false);
             if (_category != null)
                 _category.Show(category);
+        }
+
+        public void ShowImagier()
+        {
+            if (_imagier == null)
+            {
+                Celebrate("Bientôt", "L'imagier parlant rejoint l'atelier très vite.", "", MontessoriPalette.Moss, null);
+                return;
+            }
+            SetScreen(_imagier.gameObject, true);
+            _imagier.ShowThemes();
         }
 
         public void ShowCategory()
@@ -147,6 +169,14 @@ namespace Sensori.Montessori
 
         public void BackFromCategories()
         {
+            if (_imagier != null && _imagier.gameObject.activeSelf)
+            {
+                if (_imagier.ShowingReader)
+                    _imagier.ShowThemes();
+                else
+                    OpenCategories();
+                return;
+            }
             if (_category != null && _category.ShowingGames)
                 OpenCategories();
             else
@@ -236,6 +266,27 @@ namespace Sensori.Montessori
             return false;
         }
 
+        void EnsureBackButtons()
+        {
+            var transforms = GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                var retour = transforms[i];
+                if (retour.name != "Retour" || retour.parent == null || retour.parent.name != "Entete")
+                    continue;
+                retour.parent.SetAsLastSibling();
+                var face = retour.Find("Face");
+                var host = face != null ? face.gameObject : retour.gameObject;
+                if (host.GetComponent<NavigationButton>() != null || host.GetComponent<Button>() != null || host.GetComponent<ImagierTap>() != null)
+                    continue;
+                var image = host.GetComponent<Image>();
+                if (image != null)
+                    image.raycastTarget = true;
+                var navigation = host.AddComponent<NavigationButton>();
+                navigation.Configure(NavigationTarget.Category);
+            }
+        }
+
         void WireCategoryBack()
         {
             if (_category == null)
@@ -267,6 +318,8 @@ namespace Sensori.Montessori
             }
             if (_category != null && _category.gameObject != screen)
                 _category.gameObject.SetActive(false);
+            if (_imagier != null && _imagier.gameObject != screen)
+                _imagier.gameObject.SetActive(false);
             if (_gameRoot != null)
                 _gameRoot.SetActive(false);
             if (_celebration != null && _celebration.gameObject.activeSelf)

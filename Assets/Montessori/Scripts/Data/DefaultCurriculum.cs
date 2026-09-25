@@ -72,7 +72,8 @@ namespace Sensori.Montessori
                 Alphabet(),
                 Digits(),
                 Shapes(),
-                Colors()
+                Colors(),
+                ImagierParlant()
             };
         }
 
@@ -165,6 +166,20 @@ namespace Sensori.Montessori
                     Shape("shape-oval", "Ovale", "Oeuf", MontessoriPalette.Coral),
                     Shape("shape-diamond", "Losange", "Cerf-volant", MontessoriPalette.Sky)
                 }
+            };
+        }
+
+        static CategorySeed ImagierParlant()
+        {
+            return new CategorySeed
+            {
+                Id = WordThemes.CategoryId,
+                Title = "Imagier Parlant",
+                Subtitle = "Vocabulaire et actions",
+                CountLabel = "mots",
+                Accent = MontessoriPalette.Moss,
+                PuzzleGroupSize = 4,
+                Items = new ItemSeed[0]
             };
         }
 
