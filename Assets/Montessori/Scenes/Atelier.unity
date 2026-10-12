@@ -10052,6 +10052,14 @@ MonoBehaviour:
   _clear: {fileID: 0}
   _watch: {fileID: 0}
   _pearl: {fileID: 21300000, guid: cb3f86d4a51a32d4e96067a6b18c1920, type: 3}
+  _thresholds:
+    MinRecall: 0.78
+    MinPrecision: 0.5
+    MinLengthRatio: 0.7
+    MatchRadius: 0.11
+    StartRadius: 0.16
+    MinAlignment: 0.4
+    MinEndProgress: 0.66
 --- !u!1 &1137923293
 GameObject:
   m_ObjectHideFlags: 0
