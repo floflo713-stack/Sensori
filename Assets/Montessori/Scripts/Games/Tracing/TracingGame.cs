@@ -53,10 +53,11 @@ namespace Sensori.Montessori
         [SerializeField] SimpleClick _clear;
         [SerializeField] SimpleClick _watch;
         [SerializeField] Sprite _pearl;
+        [Tooltip("Seuils du doigt. Une valeur à 0 reprend le réglage prévu pour une tablette d'enfant.")]
+        [SerializeField] TracingThresholds _thresholds;
 
         readonly List<List<Vector2>> _guideStrokes = new List<List<Vector2>>();
         readonly List<List<Vector2>> _gestures = new List<List<Vector2>>();
-        readonly List<Vector2> _flatGuide = new List<Vector2>();
         readonly List<Vector2> _flatUser = new List<Vector2>();
         readonly List<Vector2> _smooth = new List<Vector2>();
         readonly List<Vector2[]> _mesh = new List<Vector2[]>();
@@ -68,6 +69,10 @@ namespace Sensori.Montessori
         bool _advancing;
         bool _drawing;
         float _idle;
+        int _accepted;
+        int _attemptFrom = -1;
+        int _hintFrom;
+        int _hintCount;
 
         public override string GameId => GameIds.Tracing;
 
@@ -179,7 +184,10 @@ namespace Sensori.Montessori
             if (_idle > 7f)
             {
                 _idle = 0f;
-                PlayHint();
+                if (_accepted > 0)
+                    PlayCurrentStroke();
+                else
+                    PlayHint();
             }
         }
 
@@ -245,6 +253,8 @@ namespace Sensori.Montessori
             _offLane = false;
             _pointer = 0;
             _idle = 0f;
+            if (_attemptFrom < 0)
+                _attemptFrom = _gestures.Count;
             var gesture = new List<Vector2>(64);
             gesture.Add(point);
             _gestures.Add(gesture);
@@ -745,12 +755,11 @@ namespace Sensori.Montessori
         void BuildGuide(LearningItem item)
         {
             _guideStrokes.Clear();
-            _flatGuide.Clear();
-            StrokePath[] strokes = item != null && !string.IsNullOrEmpty(item.ItemId)
-                ? StrokeLibrary.For(item.ItemId)
-                : null;
-            if (strokes == null || strokes.Length == 0)
-                strokes = StrokeLibrary.For("shape-circle");
+            _accepted = 0;
+            _attemptFrom = -1;
+            StrokePath[] strokes = StrokeLibrary.Resolve(
+                item != null ? item.Strokes : null,
+                item != null ? item.ItemId : null);
 
             for (int i = 0; i < strokes.Length; i++)
             {
@@ -765,8 +774,6 @@ namespace Sensori.Montessori
                 if (sampled.Count < 2)
                     continue;
                 _guideStrokes.Add(sampled);
-                for (int p = 0; p < sampled.Count; p++)
-                    _flatGuide.Add(sampled[p]);
             }
         }
 
@@ -825,17 +832,23 @@ namespace Sensori.Montessori
             for (int i = _dots.childCount - 1; i >= 0; i--)
                 Destroy(_dots.GetChild(i).gameObject);
             Color color = item != null ? item.SymbolColor : MontessoriPalette.Sun;
-            Color chalk = new Color(1f, 0.97f, 0.93f, 0.96f);
             for (int s = 0; s < _guideStrokes.Count; s++)
             {
                 var path = _guideStrokes[s];
                 if (path.Count == 0)
                     continue;
+                bool done = s < _accepted;
+                bool current = s == _accepted;
+                float size = current ? 34f : done ? 14f : 18f;
+                Color chalk = done
+                    ? new Color(1f, 0.97f, 0.93f, 0.35f)
+                    : new Color(1f, 0.97f, 0.93f, 0.96f);
+                Color ink = done ? new Color(color.r, color.g, color.b, 0.45f) : color;
                 Vector2 at = NormToLocal(path[0]);
                 var halo = UiFactory.Picture("Depart", _dots, _pearl, chalk, false, false);
-                UiFactory.AnchorCenter(halo.rectTransform, at, new Vector2(40f, 40f));
-                var dot = UiFactory.Picture("Depart", _dots, _pearl, color, false, false);
-                UiFactory.AnchorCenter(dot.rectTransform, at, new Vector2(s == 0 ? 24f : 18f, s == 0 ? 24f : 18f));
+                UiFactory.AnchorCenter(halo.rectTransform, at, new Vector2(size + 16f, size + 16f));
+                var dot = UiFactory.Picture("Depart", _dots, _pearl, ink, false, false);
+                UiFactory.AnchorCenter(dot.rectTransform, at, new Vector2(size, size));
             }
         }
 
@@ -882,29 +895,83 @@ namespace Sensori.Montessori
 
         void Evaluate()
         {
-            if (_success || _guideStrokes.Count == 0 || _flatGuide.Count == 0)
+            if (_success || _advancing || _guideStrokes.Count == 0 || _accepted >= _guideStrokes.Count)
                 return;
+            if (_attemptFrom < 0)
+                return;
+            int from = _attemptFrom;
+            _attemptFrom = -1;
             _flatUser.Clear();
-            for (int i = 0; i < _gestures.Count; i++)
+            for (int i = from; i < _gestures.Count; i++)
             {
                 for (int p = 0; p < _gestures[i].Count; p++)
                     _flatUser.Add(_gestures[i][p]);
             }
-            if (_flatUser.Count < 16)
-                return;
-            float guideLength = 0f;
-            for (int i = 0; i < _guideStrokes.Count; i++)
-                guideLength += PolylineMath.Length(_guideStrokes[i]);
-            if (PolylineMath.Length(_flatUser) < guideLength * 0.7f)
-                return;
-            for (int i = 0; i < _guideStrokes.Count; i++)
+            if (_flatUser.Count < 2 || PolylineMath.Length(_flatUser) < 0.03f)
             {
-                if (PolylineMath.Recall(_guideStrokes[i], _flatUser, 0.11f) < 0.78f)
-                    return;
-            }
-            if (PolylineMath.Precision(_flatGuide, _flatUser, 0.12f) < 0.5f)
+                DropFrom(from);
+                PaintInk();
                 return;
-            Succeed();
+            }
+
+            StrokeVerdict verdict = StrokeJudge.Evaluate(_guideStrokes[_accepted], _flatUser, ActiveThresholds());
+            if (!verdict.Accepted)
+            {
+                DropFrom(from);
+                PaintInk();
+                Coach(verdict.Fault);
+                return;
+            }
+
+            _accepted++;
+            if (_accepted >= _guideStrokes.Count)
+            {
+                Succeed();
+                return;
+            }
+
+            if (_instruction != null)
+                _instruction.text = "Au trait suivant.";
+            PlaceDots(CurrentItem());
+            _idle = 0f;
+            PlayCurrentStroke();
+        }
+
+        TracingThresholds ActiveThresholds()
+        {
+            return _thresholds.Sanitized();
+        }
+
+        void DropFrom(int from)
+        {
+            if (from < 0 || from >= _gestures.Count)
+                return;
+            _gestures.RemoveRange(from, _gestures.Count - from);
+        }
+
+        void Coach(StrokeFault fault)
+        {
+            _idle = 0f;
+            if (_instruction != null)
+                _instruction.text = FaultPhrase(fault);
+            PlayCurrentStroke();
+        }
+
+        static string FaultPhrase(StrokeFault fault)
+        {
+            switch (fault)
+            {
+                case StrokeFault.WrongStart:
+                    return "Commence sur le point.";
+                case StrokeFault.WrongDirection:
+                    return "Dans ce sens, tout doux.";
+                case StrokeFault.Scribble:
+                    return "Un seul trait, doucement.";
+                case StrokeFault.OffPath:
+                    return "Reste sur le trait.";
+                default:
+                    return "Va jusqu'au bout du trait.";
+            }
         }
 
         void Succeed()
@@ -959,38 +1026,73 @@ namespace Sensori.Montessori
         {
             if (_success)
                 return;
+            _drawing = false;
             _gestures.Clear();
+            _accepted = 0;
+            _attemptFrom = -1;
             ClearTrail();
             if (_ink != null)
                 _ink.ClearPaths();
             _idle = 0f;
+            if (_instruction != null)
+                _instruction.text = "Suis le chemin avec le doigt.";
+            PlaceDots(CurrentItem());
         }
 
         void PlayHint()
         {
-            if (_guideStrokes.Count == 0 || _hint == null || _success)
+            PlayRange(0, _guideStrokes.Count);
+        }
+
+        void PlayCurrentStroke()
+        {
+            if (_guideStrokes.Count == 0)
                 return;
+            int index = _accepted;
+            if (index < 0 || index >= _guideStrokes.Count)
+                index = 0;
+            PlayRange(index, 1);
+        }
+
+        void PlayRange(int from, int count)
+        {
+            if (_guideStrokes.Count == 0 || _hint == null || _success || count <= 0)
+                return;
+            if (from < 0)
+                from = 0;
+            if (from >= _guideStrokes.Count)
+                from = _guideStrokes.Count - 1;
+            if (from + count > _guideStrokes.Count)
+                count = _guideStrokes.Count - from;
             StopHint();
+            _hintFrom = from;
+            _hintCount = count;
             _hint.transform.SetAsLastSibling();
             _hint.rectTransform.sizeDelta = new Vector2(58f, 58f);
             _hint.gameObject.SetActive(true);
             var color = CurrentItem() != null ? CurrentItem().SymbolColor : MontessoriPalette.Sun;
             color.a = 1f;
             _hint.color = color;
-            float duration = Mathf.Clamp(1.3f + _flatGuide.Count * 0.012f, 1.6f, 3.6f);
+            float length = 0f;
+            for (int i = 0; i < count; i++)
+                length += PolylineMath.Length(_guideStrokes[from + i]);
+            float duration = Mathf.Clamp(0.85f + length * 1.15f, 0.95f, 3.4f);
             Motion.Float(0f, 1f, duration, PlaceHint, Ease.InOutSine, this, "hint").OnComplete(HideHint);
         }
 
         void PlaceHint(float u)
         {
-            if (_hint == null || _guideStrokes.Count == 0)
+            if (_hint == null || _hintCount <= 0 || _guideStrokes.Count == 0)
                 return;
             _hint.transform.SetAsLastSibling();
-            float scaled = Mathf.Clamp01(u) * _guideStrokes.Count;
-            int stroke = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, _guideStrokes.Count - 1);
-            float along = scaled - stroke;
+            float scaled = Mathf.Clamp01(u) * _hintCount;
+            int local = Mathf.Clamp(Mathf.FloorToInt(scaled), 0, _hintCount - 1);
+            float along = scaled - local;
+            int stroke = _hintFrom + local;
+            if (stroke < 0 || stroke >= _guideStrokes.Count)
+                return;
             var path = _guideStrokes[stroke];
-            var point = PolylineMath.PointAt(path, PolylineMath.Length(path) * along);
+            var point = PolylineMath.PointAt(path, PolylineMath.Length(path) * Mathf.Clamp01(along));
             _hint.rectTransform.anchoredPosition = NormToLocal(point);
         }
 

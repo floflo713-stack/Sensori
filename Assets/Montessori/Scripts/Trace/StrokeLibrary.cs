@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace Sensori.Montessori
 {
-    public static class StrokeLibrary
+    public static partial class StrokeLibrary
     {
         public static StrokePath[] For(string key)
         {
@@ -12,32 +12,32 @@ namespace Sensori.Montessori
                 return new[] { Circle(0.5f, 0.5f, 0.34f, 0.34f, 28) };
             switch (key)
             {
-                case "letter-a": return Lines(S("0.16,0.10 0.50,0.90 0.84,0.10"), S("0.30,0.42 0.70,0.42"));
-                case "letter-b": return Lines(S("0.26,0.10 0.26,0.90"), S("0.26,0.90 0.58,0.90 0.74,0.78 0.74,0.62 0.58,0.50 0.26,0.50"), S("0.26,0.50 0.62,0.50 0.78,0.36 0.78,0.22 0.60,0.10 0.26,0.10"));
-                case "letter-c": return Lines(Arc(0.52f, 0.50f, 0.34f, 0.40f, 55f, 305f, 24));
-                case "letter-d": return Lines(S("0.26,0.10 0.26,0.90"), S("0.26,0.90 0.52,0.90 0.78,0.74 0.78,0.26 0.52,0.10 0.26,0.10"));
-                case "letter-e": return Lines(S("0.28,0.10 0.28,0.90"), S("0.28,0.90 0.74,0.90"), S("0.28,0.50 0.64,0.50"), S("0.28,0.10 0.74,0.10"));
-                case "letter-f": return Lines(S("0.30,0.10 0.30,0.90"), S("0.30,0.90 0.76,0.90"), S("0.30,0.50 0.66,0.50"));
-                case "letter-g": return Lines(Arc(0.48f, 0.50f, 0.34f, 0.40f, 50f, 310f, 24), S("0.70,0.50 0.48,0.50"));
-                case "letter-h": return Lines(S("0.24,0.10 0.24,0.90"), S("0.76,0.10 0.76,0.90"), S("0.24,0.50 0.76,0.50"));
-                case "letter-i": return Lines(S("0.32,0.90 0.68,0.90"), S("0.50,0.90 0.50,0.10"), S("0.32,0.10 0.68,0.10"));
-                case "letter-j": return Lines(S("0.38,0.90 0.72,0.90"), S("0.62,0.90 0.62,0.28 0.52,0.12 0.34,0.12 0.24,0.24"));
-                case "letter-k": return Lines(S("0.28,0.10 0.28,0.90"), S("0.72,0.90 0.32,0.48"), S("0.44,0.58 0.78,0.10"));
-                case "letter-l": return Lines(S("0.30,0.90 0.30,0.10 0.76,0.10"));
-                case "letter-m": return Lines(S("0.12,0.10 0.12,0.90 0.50,0.42 0.88,0.90 0.88,0.10"));
-                case "letter-n": return Lines(S("0.20,0.10 0.20,0.90 0.80,0.10 0.80,0.90"));
-                case "letter-o": return Lines(Circle(0.50f, 0.50f, 0.32f, 0.40f, 28));
-                case "letter-p": return Lines(S("0.28,0.10 0.28,0.90"), S("0.28,0.90 0.62,0.90 0.78,0.76 0.78,0.60 0.60,0.46 0.28,0.46"));
-                case "letter-q": return Lines(Circle(0.46f, 0.50f, 0.28f, 0.38f, 28), S("0.62,0.34 0.84,0.10"));
-                case "letter-r": return Lines(S("0.28,0.10 0.28,0.90"), S("0.28,0.90 0.62,0.90 0.78,0.76 0.78,0.60 0.60,0.46 0.28,0.46"), S("0.52,0.46 0.80,0.10"));
-                case "letter-s": return Lines(S("0.74,0.78 0.60,0.90 0.38,0.90 0.24,0.78 0.26,0.64 0.40,0.54 0.62,0.46 0.76,0.34 0.74,0.20 0.58,0.10 0.36,0.10 0.22,0.22"));
-                case "letter-t": return Lines(S("0.18,0.90 0.82,0.90"), S("0.50,0.90 0.50,0.10"));
-                case "letter-u": return Lines(S("0.22,0.90 0.22,0.36 0.34,0.12 0.66,0.12 0.78,0.36 0.78,0.90"));
-                case "letter-v": return Lines(S("0.14,0.90 0.50,0.10 0.86,0.90"));
-                case "letter-w": return Lines(S("0.08,0.90 0.28,0.10 0.50,0.62 0.72,0.10 0.92,0.90"));
-                case "letter-x": return Lines(S("0.18,0.90 0.82,0.10"), S("0.82,0.90 0.18,0.10"));
-                case "letter-y": return Lines(S("0.16,0.90 0.50,0.48 0.84,0.90"), S("0.50,0.48 0.50,0.10"));
-                case "letter-z": return Lines(S("0.18,0.90 0.82,0.90 0.18,0.10 0.82,0.10"));
+                case "letter-a": return Cursive('a');
+                case "letter-b": return Cursive('b');
+                case "letter-c": return Cursive('c');
+                case "letter-d": return Cursive('d');
+                case "letter-e": return Cursive('e');
+                case "letter-f": return Cursive('f');
+                case "letter-g": return Cursive('g');
+                case "letter-h": return Cursive('h');
+                case "letter-i": return Cursive('i');
+                case "letter-j": return Cursive('j');
+                case "letter-k": return Cursive('k');
+                case "letter-l": return Cursive('l');
+                case "letter-m": return Cursive('m');
+                case "letter-n": return Cursive('n');
+                case "letter-o": return Cursive('o');
+                case "letter-p": return Cursive('p');
+                case "letter-q": return Cursive('q');
+                case "letter-r": return Cursive('r');
+                case "letter-s": return Cursive('s');
+                case "letter-t": return Cursive('t');
+                case "letter-u": return Cursive('u');
+                case "letter-v": return Cursive('v');
+                case "letter-w": return Cursive('w');
+                case "letter-x": return Cursive('x');
+                case "letter-y": return Cursive('y');
+                case "letter-z": return Cursive('z');
                 case "digit-0": return Lines(Circle(0.50f, 0.50f, 0.28f, 0.40f, 28));
                 case "digit-1": return Lines(S("0.36,0.68 0.54,0.90 0.54,0.10"), S("0.34,0.10 0.74,0.10"));
                 case "digit-2": return Lines(S("0.24,0.72 0.32,0.88 0.56,0.90 0.74,0.76 0.70,0.58 0.22,0.14 0.80,0.10"));
@@ -59,6 +59,28 @@ namespace Sensori.Montessori
                 default:
                     return new[] { Circle(0.5f, 0.5f, 0.34f, 0.34f, 28) };
             }
+        }
+
+        public static StrokePath[] Resolve(StrokePath[] authored, string itemId)
+        {
+            if (HasPoints(authored))
+                return authored;
+            if (!string.IsNullOrEmpty(itemId))
+                return For(itemId);
+            return For("shape-circle");
+        }
+
+        static bool HasPoints(StrokePath[] strokes)
+        {
+            if (strokes == null || strokes.Length == 0)
+                return false;
+            for (int i = 0; i < strokes.Length; i++)
+            {
+                StrokePath stroke = strokes[i];
+                if (stroke != null && stroke.Points != null && stroke.Points.Length >= 2)
+                    return true;
+            }
+            return false;
         }
 
         static StrokePath[] Lines(params StrokePath[] paths)
