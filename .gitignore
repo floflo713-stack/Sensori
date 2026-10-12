@@ -77,6 +77,13 @@ mono_crash.*
 *.unitypackage.meta
 *.app
 
+# Android signing material and Unity license files. Never commit these.
+*.keystore
+*.keystore.meta
+*.jks
+*.jks.meta
+*.ulf
+
 # Crashlytics generated file
 crashlytics-build.properties
 

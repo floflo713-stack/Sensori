@@ -1,0 +1,98 @@
+name: Android APK
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    name: Build signed APK and publish release
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Unity 6.6 + the Android IL2CPP image need more free disk than a default runner has.
+      - name: Free disk space
+        uses: jlumbroso/free-disk-space@v1.3.1
+
+      - name: Cache Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-Android-
+
+      # v4.8.2 passes --shm-size (Unity 6000.6+ asks for 1 GiB). The editor version
+      # comes from ProjectSettings/ProjectVersion.txt (6000.6.2f1).
+      - name: Build signed Android APK
+        id: build
+        uses: game-ci/unity-builder@v4.8.2
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          targetPlatform: Android
+          unityVersion: 6000.6.2f1
+          buildName: Sensori
+          buildsPath: build
+          versioning: Custom
+          version: 1.0.${{ github.run_number }}
+          androidVersionCode: ${{ github.run_number }}
+          androidExportType: androidPackage
+          # Decoded in CI only. The keystore file is gitignored and must not be committed.
+          androidKeystoreName: sensori-release.keystore
+          androidKeystoreBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          androidKeystorePass: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          androidKeyaliasName: ${{ secrets.ANDROID_KEYALIAS_NAME }}
+          androidKeyaliasPass: ${{ secrets.ANDROID_KEYALIAS_PASS }}
+          dockerShmSize: 1025m
+
+      - name: Prepare release APK
+        run: |
+          set -euo pipefail
+          apk="build/Android/Sensori.apk"
+          if [ ! -f "$apk" ]; then
+            echo "APK introuvable à ${apk}"
+            find build -type f -print
+            exit 1
+          fi
+          mkdir -p dist
+          cp "$apk" "dist/Sensori-v1.0.${GITHUB_RUN_NUMBER}.apk"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sensori-v1.0.${{ github.run_number }}
+          path: dist/Sensori-v1.0.${{ github.run_number }}.apk
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: Sensori v1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          files: dist/Sensori-v1.0.${{ github.run_number }}.apk
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            APK Android signé de Sensori.
+
+            - Version : `1.0.${{ github.run_number }}`
+            - versionCode Android : `${{ github.run_number }}`
+            - Identifiant : `com.florian.sensori`
+
+            Le versionCode suit le numéro d'exécution du workflow, pour que chaque nouvel APK s'installe par-dessus le précédent lorsqu'il est signé avec la même clé.
